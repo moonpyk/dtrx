@@ -1,0 +1,3 @@
+include COPYING
+recursive-include tests *
+exclude tests/testscript.sh
