@@ -116,7 +116,7 @@ class BaseExtractor(object):
         filenames = self.get_filenames()
         try:
             first_part = filenames.next().split('/', 1)[0] + '/'
-        except IndexError:
+        except StopIteration:
             filenames.stop()
             return EMPTY
         for filename in filenames:
@@ -130,7 +130,13 @@ class BaseExtractor(object):
 
     def basename(self):
         pieces = self.filename.split('.')
-        if mimetypes.encodings_map.has_key('.' + pieces.pop()):
+        extension = '.' + pieces[-1]
+        if mimetypes.encodings_map.has_key(extension):
+            pieces.pop()
+            extension = '.' + pieces[-1]
+        if (mimetypes.types_map.has_key(extension) or
+            mimetypes.common_types.has_key(extension) or
+            mimetypes.suffix_map.has_key(extension)):
             pieces.pop()
         return '.'.join(pieces)
 
@@ -177,7 +183,17 @@ class RPMExtractor(CpioExtractor):
         self.pipe(['rpm2cpio', '-'], "rpm2cpio")
 
     def basename(self):
-        return self.filename.rsplit('.', 2)[0]
+        pieces = self.filename.rsplit('.', 2)
+        if len(pieces) == 1:
+            return pieces[0]
+        elif pieces[-1] != 'rpm':
+            return BaseExtractor.basename(self)
+        pieces.pop()
+        if len(pieces) == 1:
+            return pieces[0]
+        elif len(pieces[-1]) < 6:
+            pieces.pop()
+        return '.'.join(pieces)
 
     def check_contents(self):
         return BOMB
@@ -191,7 +207,12 @@ class DebExtractor(TarExtractor):
         self.pipe(['zcat'], "data.tar.gz decompression")
 
     def basename(self):
-        return self.filename.rsplit('_', 1)[0]
+        pieces = self.filename.rsplit('_', 1)
+        if len(pieces) == 1:
+            return pieces[0]
+        elif (len(pieces[-1]) > 10) or (not pieces[-1].endswith('.deb')):
+            return BaseExtractor.basename(self)
+        return pieces[0]
 
     def check_contents(self):
         return BOMB
@@ -199,6 +220,7 @@ class DebExtractor(TarExtractor):
 
 extractor_map = {'application/x-tar': TarExtractor,
                  'application/zip': ZipExtractor,
+                 'application/x-msdos-program': ZipExtractor,
                  'application/x-debian-package': DebExtractor,
                  'application/x-redhat-package-manager': RPMExtractor,
                  'application/x-shar': None,
