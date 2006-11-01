@@ -1,0 +1,16 @@
+Things which I have a use case/anti-use case for:
+* Take out the shar support, you're probably not gonna use it.
+* Handle the one misnamed directory case.
+* Provide a real exit status.
+
+Things that are generally good:
+* Better error messages:
+ * Problems opening/understanding the file.
+ * Extra strategies for making a directory, and then better errors.
+ * Running subcommands.
+* Clean up the run method.
+* Usage information.
+
+Things I think might be good but can't prove:
+* Use zipfile instead of the zip commands.
+* Processing from stdin.
