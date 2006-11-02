@@ -1,7 +1,11 @@
 Things which I have a use case/anti-use case for:
+* Make sure the basename method just works with the basename, and doesn't
+  include any preceding path.
 * Take out the shar support, you're probably not gonna use it.
 * Handle the one misnamed directory case.
 * Provide a real exit status.
+* Fix permissions as you extract.
+* Recursive extraction.
 
 Things that are generally good:
 * Better error messages:
