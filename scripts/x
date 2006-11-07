@@ -19,6 +19,7 @@
 
 import errno
 import mimetypes
+import optparse
 import os
 import subprocess
 import sys
@@ -26,13 +27,27 @@ import tempfile
 
 from cStringIO import StringIO
 
-mimetypes.encodings_map.setdefault('.bz2', 'bzip2')
-mimetypes.types_map['.exe'] = 'application/x-msdos-program'
+VERSION = "1.1"
+VERSION_BANNER = """x version %s
+Copyright (c) 2006 Brett Smith <brettcsmith@brettcsmith.org>
+
+This program is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 2 of the License, or (at your
+option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General
+Public License for more details.""" % (VERSION,)
 
 MATCHING_DIRECTORY = 1
-ONE_DIRECTORY = 2
+# ONE_DIRECTORY = 2
 BOMB = 3
 EMPTY = 4
+
+mimetypes.encodings_map.setdefault('.bz2', 'bzip2')
+mimetypes.types_map['.exe'] = 'application/x-msdos-program'
 
 class ExtractorError(Exception):
     pass
@@ -74,9 +89,12 @@ class BaseExtractor(object):
     decoders = {'bzip2': 'bzcat', 'gzip': 'zcat', 'compress': 'zcat'}
 
     def __init__(self, filename, mimetype, encoding):
+        if encoding and (not self.decoders.has_key(encoding)):
+            raise ValueError("unrecognized encoding %s" % (encoding,))
         self.filename = filename
         self.mimetype = mimetype
         self.encoding = encoding
+        self.included_archives = []
         try:
             self.archive = open(filename, 'r')
         except (IOError, OSError), error:
@@ -112,17 +130,24 @@ class BaseExtractor(object):
 
     def check_contents(self):
         self.archive.seek(0, 0)
+        archive_type = None
         filenames = self.get_filenames()
         try:
-            first_part = filenames.next().split('/', 1)[0] + '/'
+            filename = filenames.next()
+            if extractor_map.has_key(mimetypes.guess_type(filename)[0]):
+                self.included_archives.append(filename)
+            first_part = filename.split('/', 1)[0] + '/'
         except StopIteration:
             filenames.stop()
             return EMPTY
         for filename in filenames:
-            if not filename.startswith(first_part):
-                filenames.stop()
-                return BOMB
+            if extractor_map.has_key(mimetypes.guess_type(filename)[0]):
+                self.included_archives.append(filename)
+            if (archive_type is None) and (not filename.startswith(first_part)):
+                archive_type = BOMB
         filenames.stop()
+        if archive_type:
+            return archive_type
         if self.basename() == first_part[:-1]:
             return MATCHING_DIRECTORY
         return first_part
@@ -157,6 +182,7 @@ class ZipExtractor(BaseExtractor):
         self.filename = filename
         self.mimetype = mimetype
         self.encoding = encoding
+        self.included_archives = []
         self.archive = StringIO()
 
     def get_filenames(self):
@@ -195,8 +221,9 @@ class RPMExtractor(CpioExtractor):
         return '.'.join(pieces)
 
     def check_contents(self):
+        CpioExtractor.check_contents(self)
         return BOMB
-        
+
 
 class DebExtractor(TarExtractor):
     def prepare(self):
@@ -214,23 +241,39 @@ class DebExtractor(TarExtractor):
         return pieces[0]
 
     def check_contents(self):
+        TarExtractor.check_contents(self)
         return BOMB
         
 
+extractor_map = {'application/x-tar': TarExtractor,
+                 'application/zip': ZipExtractor,
+                 'application/x-msdos-program': ZipExtractor,
+                 'application/x-debian-package': DebExtractor,
+                 'application/x-redhat-package-manager': RPMExtractor,
+                 'application/x-rpm': RPMExtractor,
+                 'application/x-cpio': CpioExtractor}
+
 class ExtractorApplication(object):
-    extractor_map = {'application/x-tar': TarExtractor,
-                     'application/zip': ZipExtractor,
-                     'application/x-msdos-program': ZipExtractor,
-                     'application/x-debian-package': DebExtractor,
-                     'application/x-redhat-package-manager': RPMExtractor,
-                     'application/x-rpm': RPMExtractor,
-                     'application/x-cpio': CpioExtractor}
-    actions = ['get_extractor', 'prepare_extraction', 'extract']
+    actions = ['get_extractor', 'prepare_extraction', 'extract', 'recurse']
 
     def __init__(self, arguments):
-        self.filenames = arguments
+        self.parse_options(arguments)
         self.successes = []
         self.failures = []
+
+    def parse_options(self, arguments):
+        parser = optparse.OptionParser(
+            usage="%prog [options] archive [archive2 ...]",
+            description="Intelligent archive extractor",
+            version=VERSION_BANNER
+            )
+        parser.add_option('-r', '--recursive', dest='recursive',
+                          action='store_true', default=False,
+                          help='extract archives contained in the ones listed')
+        self.options, filenames = parser.parse_args(arguments)
+        if not filenames:
+            parser.error("you did not list any archives")
+        self.archives = {os.path.realpath(os.curdir): filenames}
 
     def show_error(self, message):
         print >>sys.stderr, "%s: %s" % (self.current_filename, message)
@@ -238,7 +281,7 @@ class ExtractorApplication(object):
     def get_extractor(self):
         mimetype, encoding = mimetypes.guess_type(self.current_filename)
         try:
-            handler = self.extractor_map[mimetype]
+            handler = extractor_map[mimetype]
         except KeyError:
             self.show_error("not a known archive type")
             return False
@@ -273,15 +316,17 @@ class ExtractorApplication(object):
         self.current_path = '.'
         contents = self.current_extractor.check_contents()
         if contents not in (MATCHING_DIRECTORY, EMPTY):
-            directory = self.prepare_target_directory()
-            if directory is None:
+            self.target_directory = self.prepare_target_directory()
+            if self.target_directory is None:
                 return False
             if contents == BOMB:
-                os.chdir(directory)
+                os.chdir(self.target_directory)
                 self.current_path = '..'
-                self.cleanup_actions.append((os.chdir, '..'))
             else:
-                self.cleanup_actions.append((os.rename, contents, directory))
+                self.cleanup_actions.append((os.rename, contents,
+                                             self.target_directory))
+        else:
+            self.target_directory = os.curdir
         return True
 
     def extract(self):
@@ -292,20 +337,35 @@ class ExtractorApplication(object):
             return False
         return True
 
+    def recurse(self):
+        if not self.options.recursive:
+            return True
+        print "wow", self.current_extractor.included_archives
+        for filename in self.current_extractor.included_archives:
+            tail_path, basename = os.path.split(filename)
+            directory = os.path.join(self.current_directory,
+                                     self.target_directory, tail_path)
+            self.archives.setdefault(directory, []).append(basename)
+        print self.archives
+        return True
+
     def run(self):
-        for filename in self.filenames:
-            running = True
-            self.current_filename = filename
-            self.cleanup_actions = []
-            actions = [getattr(self, name) for name in self.actions]
-            while running and actions:
-                running = actions.pop(0)()
-            for action in self.cleanup_actions:
-                action[0](*action[1:])
-            if running:
-                self.successes.append(self.current_filename)
-            else:
-                self.failures.append(self.current_filename)
+        while self.archives:
+            self.current_directory, filenames = self.archives.popitem()
+            for filename in filenames:
+                os.chdir(self.current_directory)
+                running = True
+                self.current_filename = filename
+                self.cleanup_actions = []
+                actions = [getattr(self, name) for name in self.actions]
+                while running and actions:
+                    running = actions.pop(0)()
+                for action in self.cleanup_actions:
+                    action[0](*action[1:])
+                if running:
+                    self.successes.append(self.current_filename)
+                else:
+                    self.failures.append(self.current_filename)
         if self.failures:
             return 1
         return 0

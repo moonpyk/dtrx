@@ -1,11 +1,14 @@
 Things which I have a use case/anti-use case for:
+* Decompress non-archive files.
+* DTRT in the "archive contains one file" case.
 * Fix permissions as you extract.
-* Recursive extraction.
 
 Things that are generally good:
 * Usage information.
+* Better tests.
 * Better error messages.
 
 Things I think might be good but can't prove:
 * Use zipfile instead of the zip commands.
 * Processing from stdin.
+* Extracting control.tar.gz from deb files.
