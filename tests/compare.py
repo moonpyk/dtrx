@@ -28,23 +28,34 @@ SCRIPT_PROLOGUE = """#!/bin/sh
 set -e
 """
 
-tests = {'test-1.23.tar': ['tar -xf test-1.23.tar'],
-         'test-1.23.tar.gz': ['tar -xzf test-1.23.tar.gz'],
-         'test-1.23.tar.bz2': ['mkdir test-1.23',
-                               'cd test-1.23',
-                               'tar -jxf ../test-1.23.tar.bz2'],
-         'test-1.23.zip': ['mkdir test-1.23',
-                           'cd test-1.23',
-                           'unzip -q ../test-1.23.zip'],
-         'test-1.23.cpio': ['cpio -i --make-directories \
-                             <test-1.23.cpio 2>/dev/null'],
-         'test-1.23_all.deb': ['TD=$PWD',
-                               'mkdir test-1.23',
-                               'cd /tmp',
-                               'ar x $TD/test-1.23_all.deb data.tar.gz',
-                               'cd $TD/test-1.23',
-                               'tar -zxf /tmp/data.tar.gz',
-                               'rm /tmp/data.tar.gz']}
+tests = {'test-1.23.tar': ([], ['tar -xf test-1.23.tar'], []),
+         'test-1.23.tar.gz': ([], ['tar -xzf test-1.23.tar.gz'], []),
+         'test-1.23.tar.bz2': ([], ['mkdir test-1.23',
+                                    'cd test-1.23',
+                                    'tar -jxf ../test-1.23.tar.bz2'], []),
+         'test-1.23.zip': ([], ['mkdir test-1.23',
+                                'cd test-1.23',
+                                'unzip -q ../test-1.23.zip'], []),
+         'test-1.23.cpio': ([], ['cpio -i --make-directories \
+                                  <test-1.23.cpio 2>/dev/null'], []),
+         'test-1.23_all.deb': ([], ['TD=$PWD',
+                                    'mkdir test-1.23',
+                                    'cd /tmp',
+                                    'ar x $TD/test-1.23_all.deb data.tar.gz',
+                                    'cd $TD/test-1.23',
+                                    'tar -zxf /tmp/data.tar.gz',
+                                    'rm /tmp/data.tar.gz'], []),
+         'test-recursive-badperms.tar.bz2': (
+    ['-r'],
+    ['mkdir test-recursive-badperms',
+     'cd test-recursive-badperms',
+     'tar -jxf ../test-recursive-badperms.tar.bz2',
+     'tar -xf test-badperms.tar',
+     'mv testdir test-badperms',
+     'chmod 755 test-badperms'],
+    ['if [ "x`cat test-recursive-badperms/test-badperms/testfile`" = "xhey" ]',
+     'then exit 0; else exit 1; fi']
+    )}
 
 if os.path.exists('scripts/x') and os.path.exists('tests'):
     os.chdir('tests')
@@ -59,9 +70,9 @@ class ExtractorTestError(Exception):
 
 
 class ExtractorTest(object):
-    def __init__(self, archive_filename, commands):
+    def __init__(self, archive_filename, info):
         self.archive_filename = archive_filename
-        self.shell_commands = commands
+        self.arguments, self.shell_commands, self.shell_test = info
         
     def get_results(self, commands):
         status = subprocess.call(commands)
@@ -73,17 +84,26 @@ class ExtractorTest(object):
         process.stdout.close()
         return set(output.split('\n'))
         
-    def get_shell_results(self):
+    def write_script(self, commands):
         script = open(TESTSCRIPT_NAME, 'w')
-        script.write("%s%s\n" % (SCRIPT_PROLOGUE,
-                                 '\n'.join(self.shell_commands)))
+        script.write("%s%s\n" % (SCRIPT_PROLOGUE, '\n'.join(commands)))
         script.close()
         subprocess.call(['chmod', 'u+w', TESTSCRIPT_NAME])
+
+    def get_shell_results(self):
+        self.write_script(self.shell_commands)
         return self.get_results(['sh', TESTSCRIPT_NAME])
 
     def get_extractor_results(self):
-        return self.get_results(['../scripts/x', self.archive_filename])
+        return self.get_results(['../scripts/x'] + self.arguments +
+                                [self.archive_filename])
         
+    def get_posttest_result(self):
+        if not self.shell_test:
+            return 0
+        self.write_script(self.shell_test)
+        return subprocess.call(['sh', TESTSCRIPT_NAME])
+
     def clean(self):
         status = subprocess.call(['find', '-mindepth', '1', '-maxdepth', '1',
                                   '-type', 'd',
@@ -98,6 +118,7 @@ class ExtractorTest(object):
         expected = self.get_shell_results()
         self.clean()
         actual = self.get_extractor_results()
+        posttest_result = self.get_posttest_result()
         self.clean()
         if expected is None:
             raise ExtractorTestError("could not get baseline results")
@@ -109,6 +130,11 @@ class ExtractorTest(object):
             print '\n'.join(expected.difference(actual))
             print "Only in actual results:"
             print '\n'.join(actual.difference(expected))
+            return False
+        elif posttest_result != 0:
+            print "FAILED:", self.archive_filename
+            print "Posttest returned status code", posttest_result
+            print actual
             return False
         else:
             print "Passed:", self.archive_filename

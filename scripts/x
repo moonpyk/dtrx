@@ -312,10 +312,18 @@ class ExtractorApplication(object):
             self.show_error("all good names for an extraction directory taken")
         return directory
 
+    def move_to_directory(self, filename, target):
+        if not os.path.isdir(filename):
+            filename = os.path.split(filename)[0]
+            target = os.path.join(target, filename)
+        os.rename(filename, target)
+
     def prepare_extraction(self):
         self.current_path = '.'
         contents = self.current_extractor.check_contents()
-        if contents not in (MATCHING_DIRECTORY, EMPTY):
+        if contents == MATCHING_DIRECTORY:
+            self.target_directory = self.current_filename
+        elif contents != EMPTY:
             self.target_directory = self.prepare_target_directory()
             if self.target_directory is None:
                 return False
@@ -323,10 +331,10 @@ class ExtractorApplication(object):
                 os.chdir(self.target_directory)
                 self.current_path = '..'
             else:
-                self.cleanup_actions.append((os.rename, contents,
+                self.cleanup_actions.append((self.move_to_directory, contents,
                                              self.target_directory))
         else:
-            self.target_directory = os.curdir
+            self.target_directory = None
         return True
 
     def extract(self):
@@ -340,14 +348,26 @@ class ExtractorApplication(object):
     def recurse(self):
         if not self.options.recursive:
             return True
-        print "wow", self.current_extractor.included_archives
         for filename in self.current_extractor.included_archives:
             tail_path, basename = os.path.split(filename)
             directory = os.path.join(self.current_directory,
                                      self.target_directory, tail_path)
             self.archives.setdefault(directory, []).append(basename)
-        print self.archives
         return True
+
+    def fix_perms(self):
+        if self.target_directory is None:
+            return True
+        status = subprocess.call(['chmod', '-R', 'u+rw',
+                                  os.path.join(self.current_directory,
+                                               self.target_directory)])
+        if status == 0:
+            status = subprocess.call(['find',
+                                      os.path.join(self.current_directory,
+                                                   self.target_directory),
+                                      '-type', 'd',
+                                      '-exec', 'chmod', 'u+x', '{}', ';'])
+        return status == 0
 
     def run(self):
         while self.archives:
@@ -362,6 +382,7 @@ class ExtractorApplication(object):
                     running = actions.pop(0)()
                 for action in self.cleanup_actions:
                     action[0](*action[1:])
+                running = self.fix_perms()
                 if running:
                     self.successes.append(self.current_filename)
                 else:

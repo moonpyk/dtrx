@@ -1,10 +1,9 @@
 Things which I have a use case/anti-use case for:
+* Clean up ExtractorApplication, ugh.
+* Reconsider the current extraction policy for the ONE_DIRECTORY case.
 * Decompress non-archive files.
-* DTRT in the "archive contains one file" case.
-* Fix permissions as you extract.
 
 Things that are generally good:
-* Usage information.
 * Better tests.
 * Better error messages.
 
