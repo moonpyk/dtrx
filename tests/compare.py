@@ -50,10 +50,12 @@ tests = {'test-1.23.tar': ([], ['tar -xf test-1.23.tar'], []),
     ['mkdir test-recursive-badperms',
      'cd test-recursive-badperms',
      'tar -jxf ../test-recursive-badperms.tar.bz2',
-     'tar -xf test-badperms.tar',
-     'mv testdir test-badperms',
-     'chmod 755 test-badperms'],
-    ['if [ "x`cat test-recursive-badperms/test-badperms/testfile`" = "xhey" ]',
+     'mkdir test-badperms',
+     'cd test-badperms',
+     'tar -xf ../test-badperms.tar',
+     'chmod 755 testdir'],
+    ['if [ "x`cat test-recursive-badperms/test-badperms/testdir/testfile`" = \
+      "xhey" ]',
      'then exit 0; else exit 1; fi']
     )}
 

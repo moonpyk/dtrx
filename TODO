@@ -1,13 +1,16 @@
 Things which I have a use case/anti-use case for:
-* Clean up ExtractorApplication, ugh.
-* Reconsider the current extraction policy for the ONE_DIRECTORY case.
 * Decompress non-archive files.
+* Write tests for extracting in a different directory from where the archives
+  live.
+* Figure out what to do about warnings in the Handlers.
 
 Things that are generally good:
 * Better tests.
 * Better error messages.
 
 Things I think might be good but can't prove:
+* Consider having options about whether or not to make sane directories,
+  have tarbomb protection, etc.
 * Use zipfile instead of the zip commands.
 * Processing from stdin.
 * Extracting control.tar.gz from deb files.
