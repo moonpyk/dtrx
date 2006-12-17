@@ -354,10 +354,9 @@ class ExtractorApplication(object):
     def recurse(self):
         if not self.options.recursive:
             return
-        archive_path = os.path.split(self.current_filename)[0]
         for filename in self.current_extractor.included_archives:
             tail_path, basename = os.path.split(filename)
-            directory = os.path.join(self.current_directory, archive_path,
+            directory = os.path.join(self.current_directory,
                                      self.current_handler.directory, tail_path)
             self.archives.setdefault(directory, []).append(basename)
 

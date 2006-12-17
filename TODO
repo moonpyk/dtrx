@@ -1,7 +1,5 @@
 Things which I have a use case/anti-use case for:
 * Decompress non-archive files.
-* Write tests for extracting in a different directory from where the archives
-  live.
 * Figure out what to do about warnings in the Handlers.
 
 Things that are generally good:

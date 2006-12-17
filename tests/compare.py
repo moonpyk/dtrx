@@ -28,20 +28,20 @@ SCRIPT_PROLOGUE = """#!/bin/sh
 set -e
 """
 
-tests = {'test-1.23.tar': ([], ['tar -xf test-1.23.tar'], []),
-         'test-1.23.tar.gz': ([], ['tar -xzf test-1.23.tar.gz'], []),
+tests = {'test-1.23.tar': ([], ['tar -xf $1'], []),
+         'test-1.23.tar.gz': ([], ['tar -xzf $1'], []),
          'test-1.23.tar.bz2': ([], ['mkdir test-1.23',
                                     'cd test-1.23',
-                                    'tar -jxf ../test-1.23.tar.bz2'], []),
+                                    'tar -jxf ../$1'], []),
          'test-1.23.zip': ([], ['mkdir test-1.23',
                                 'cd test-1.23',
-                                'unzip -q ../test-1.23.zip'], []),
+                                'unzip -q ../$1'], []),
          'test-1.23.cpio': ([], ['cpio -i --make-directories \
-                                  <test-1.23.cpio 2>/dev/null'], []),
+                                  <$1 2>/dev/null'], []),
          'test-1.23_all.deb': ([], ['TD=$PWD',
                                     'mkdir test-1.23',
                                     'cd /tmp',
-                                    'ar x $TD/test-1.23_all.deb data.tar.gz',
+                                    'ar x $TD/$1 data.tar.gz',
                                     'cd $TD/test-1.23',
                                     'tar -zxf /tmp/data.tar.gz',
                                     'rm /tmp/data.tar.gz'], []),
@@ -49,7 +49,7 @@ tests = {'test-1.23.tar': ([], ['tar -xf test-1.23.tar'], []),
     ['-r'],
     ['mkdir test-recursive-badperms',
      'cd test-recursive-badperms',
-     'tar -jxf ../test-recursive-badperms.tar.bz2',
+     'tar -jxf ../$1',
      'mkdir test-badperms',
      'cd test-badperms',
      'tar -xf ../test-badperms.tar',
@@ -72,8 +72,9 @@ class ExtractorTestError(Exception):
 
 
 class ExtractorTest(object):
-    def __init__(self, archive_filename, info):
-        self.archive_filename = archive_filename
+    def __init__(self, directory, archive_filename, info):
+        self.directory = directory
+        self.archive_filename = os.path.join(directory, archive_filename)
         self.arguments, self.shell_commands, self.shell_test = info
         
     def get_results(self, commands):
@@ -94,10 +95,11 @@ class ExtractorTest(object):
 
     def get_shell_results(self):
         self.write_script(self.shell_commands)
-        return self.get_results(['sh', TESTSCRIPT_NAME])
+        return self.get_results(['sh', TESTSCRIPT_NAME, self.archive_filename])
 
     def get_extractor_results(self):
-        return self.get_results(['../scripts/x'] + self.arguments +
+        script = os.path.join(self.directory, '../scripts/x')
+        return self.get_results([script] + self.arguments +
                                 [self.archive_filename])
         
     def get_posttest_result(self):
@@ -143,15 +145,25 @@ class ExtractorTest(object):
             return True
 
 
-successes = 0
-failures = 0
+def run_tests(directory, testnames):
+    successes = 0
+    failures = 0
+    for testname in testnames:
+        test = ExtractorTest(directory, testname, tests[testname])
+        if test.run():
+            successes += 1
+        else:
+            failures += 1
+    return successes, failures
+    
+results = []
 testnames = tests.keys()
 testnames.sort()
-for testname in testnames:
-    test = ExtractorTest(testname, tests[testname])
-    if test.run():
-        successes += 1
-    else:
-        failures += 1
-print "Totals: %s successes, %s failures" % (successes, failures)
-
+results.append(run_tests('.', testnames))
+os.mkdir('inside-dir')
+os.chdir('inside-dir')
+results.append(run_tests('..', testnames))
+os.chdir('..')
+subprocess.call(['rm', '-rf', 'inside-dir'])
+print "Totals: %s successes, %s failures" % \
+      tuple([sum(total) for total in zip(*results)])
