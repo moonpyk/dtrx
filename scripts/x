@@ -208,7 +208,7 @@ class RPMExtractor(CpioExtractor):
         self.pipe(['rpm2cpio', '-'], "rpm2cpio")
 
     def basename(self):
-        pieces = os.path.basename(self.filename).rsplit('.', 2)
+        pieces = os.path.basename(self.filename).split('.')
         if len(pieces) == 1:
             return pieces[0]
         elif pieces[-1] != 'rpm':
@@ -216,7 +216,7 @@ class RPMExtractor(CpioExtractor):
         pieces.pop()
         if len(pieces) == 1:
             return pieces[0]
-        elif len(pieces[-1]) < 6:
+        elif len(pieces[-1]) < 8:
             pieces.pop()
         return '.'.join(pieces)
 
@@ -233,12 +233,13 @@ class DebExtractor(TarExtractor):
         self.pipe(['zcat'], "data.tar.gz decompression")
 
     def basename(self):
-        pieces = os.path.basename(self.filename).rsplit('_', 1)
+        pieces = os.path.basename(self.filename).split('_')
         if len(pieces) == 1:
             return pieces[0]
-        elif (len(pieces[-1]) > 10) or (not pieces[-1].endswith('.deb')):
+        last_piece = pieces.pop()
+        if (len(last_piece) > 10) or (not last_piece.endswith('.deb')):
             return BaseExtractor.basename(self)
-        return pieces[0]
+        return '_'.join(pieces)
 
     def check_contents(self):
         TarExtractor.check_contents(self)
