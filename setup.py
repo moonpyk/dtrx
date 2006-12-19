@@ -3,7 +3,7 @@
 from distutils.core import setup
 
 setup(name="x",
-      version = "1.0",
+      version = "2.0",
       description = "Script to intelligently extract multiple archive types",
       author = "Brett Smith",
       author_email = "brettcsmith@brettcsmith.org",

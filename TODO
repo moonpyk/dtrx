@@ -7,6 +7,8 @@ Things that are generally good:
 * Better error messages.
 
 Things I think might be good but can't prove:
+* Interactivity ("This archive contains other archive files.  Would you
+  like to extract them as well?")
 * Consider having options about whether or not to make sane directories,
   have tarbomb protection, etc.
 * Use zipfile instead of the zip commands.
