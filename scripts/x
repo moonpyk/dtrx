@@ -332,6 +332,12 @@ class ExtractorApplication(object):
         parser.add_option('-r', '--recursive', dest='recursive',
                           action='store_true', default=False,
                           help='extract archives contained in the ones listed')
+        parser.add_option('-q', '--quiet', dest='quiet',
+                          action='count', default=3,
+                          help='suppress warning/error messages')
+        parser.add_option('-v', '--verbose', dest='verbose',
+                          action='count', default=0,
+                          help='be verbose/print debugging information')
         self.options, filenames = parser.parse_args(arguments)
         if not filenames:
             parser.error("you did not list any archives")
@@ -340,8 +346,8 @@ class ExtractorApplication(object):
     def setup_logger(self):
         self.logger = logging.getLogger('x-log')
         handler = logging.StreamHandler()
-        # Switch here.
-        handler.setLevel(logging.WARNING)
+        # WARNING is the default.
+        handler.setLevel(10 * (self.options.quiet - self.options.verbose))
         formatter = logging.Formatter("x: %(levelname)s: %(message)s")
         handler.setFormatter(formatter)
         self.logger.addHandler(handler)
