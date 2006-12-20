@@ -18,6 +18,7 @@
 # 51 Franklin Street, 5th Floor, Boston, MA, 02111.
 
 import errno
+import logging
 import mimetypes
 import optparse
 import os
@@ -248,6 +249,7 @@ class DebExtractor(TarExtractor):
 
 class MatchHandler(object):
     def __init__(self, extractor, contents):
+        self.logger = logging.getLogger('x-log')
         self.extractor = extractor
         self.contents = contents
         self.directory = extractor.basename()
@@ -282,8 +284,9 @@ class BombHandler(MatchHandler):
                     continue
                 raise ValueError("could not make extraction directory %s: %s" %
                                  (error.filename, error.strerror))
-##             if suffix != '':
-##                 self.show_error("extracted to %s" % (directory,))
+            if suffix != '':
+                self.logger.warning("%s: extracted to %s",
+                                    extractor.filename, self.directory)
             break
         else:
             raise ValueError("all good names for an extraction directory taken")
@@ -316,6 +319,7 @@ handler_map = {EMPTY: EmptyHandler,
 class ExtractorApplication(object):
     def __init__(self, arguments):
         self.parse_options(arguments)
+        self.setup_logger()
         self.successes = []
         self.failures = []
 
@@ -333,8 +337,14 @@ class ExtractorApplication(object):
             parser.error("you did not list any archives")
         self.archives = {os.path.realpath(os.curdir): filenames}
 
-    def show_error(self, message):
-        print >>sys.stderr, "%s: %s" % (self.current_filename, message)
+    def setup_logger(self):
+        self.logger = logging.getLogger('x-log')
+        handler = logging.StreamHandler()
+        # Switch here.
+        handler.setLevel(logging.WARNING)
+        formatter = logging.Formatter("x: %(levelname)s: %(message)s")
+        handler.setFormatter(formatter)
+        self.logger.addHandler(handler)
 
     def get_extractor(self):
         mimetype, encoding = mimetypes.guess_type(self.current_filename)
@@ -363,7 +373,7 @@ class ExtractorApplication(object):
     def report(self, function, *args):
         error = function(*args)
         if error:
-            self.show_error(error)
+            self.logger.error("%s: %s", self.current_filename, error)
             return False
         return True
 
