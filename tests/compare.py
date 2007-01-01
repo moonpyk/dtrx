@@ -19,45 +19,10 @@
 
 import os
 import subprocess
+import syck
 import sys
 
 from sets import Set as set
-
-TESTSCRIPT_NAME = 'testscript.sh'
-SCRIPT_PROLOGUE = """#!/bin/sh
-set -e
-"""
-
-tests = {'test-1.23.tar': ([], ['tar -xf $1'], []),
-         'test-1.23.tar.gz': ([], ['tar -xzf $1'], []),
-         'test-1.23.tar.bz2': ([], ['mkdir test-1.23',
-                                    'cd test-1.23',
-                                    'tar -jxf ../$1'], []),
-         'test-1.23.zip': ([], ['mkdir test-1.23',
-                                'cd test-1.23',
-                                'unzip -q ../$1'], []),
-         'test-1.23.cpio': ([], ['cpio -i --make-directories \
-                                  <$1 2>/dev/null'], []),
-         'test-1.23_all.deb': ([], ['TD=$PWD',
-                                    'mkdir test-1.23',
-                                    'cd /tmp',
-                                    'ar x $TD/$1 data.tar.gz',
-                                    'cd $TD/test-1.23',
-                                    'tar -zxf /tmp/data.tar.gz',
-                                    'rm /tmp/data.tar.gz'], []),
-         'test-recursive-badperms.tar.bz2': (
-    ['-r'],
-    ['mkdir test-recursive-badperms',
-     'cd test-recursive-badperms',
-     'tar -jxf ../$1',
-     'mkdir test-badperms',
-     'cd test-badperms',
-     'tar -xf ../test-badperms.tar',
-     'chmod 755 testdir'],
-    ['if [ "x`cat test-recursive-badperms/test-badperms/testdir/testfile`" = \
-      "xhey" ]',
-     'then exit 0; else exit 1; fi']
-    )}
 
 if os.path.exists('scripts/x') and os.path.exists('tests'):
     os.chdir('tests')
@@ -67,15 +32,26 @@ else:
     print "ERROR: Can't run tests in this directory!"
     sys.exit(2)
 
+X_SCRIPT = os.path.realpath('../scripts/x')
+ROOT_DIR = os.path.realpath(os.curdir)
+OUTCOMES = ['error', 'failed', 'passed']
+TESTSCRIPT_NAME = 'testscript.sh'
+SCRIPT_PROLOGUE = """#!/bin/sh
+set -e
+"""
+
 class ExtractorTestError(Exception):
     pass
 
 
 class ExtractorTest(object):
-    def __init__(self, directory, archive_filename, info):
-        self.directory = directory
-        self.archive_filename = os.path.join(directory, archive_filename)
-        self.arguments, self.shell_commands, self.shell_test = info
+    def __init__(self, **kwargs):
+        for key in ('name', 'filename', 'baseline'):
+            setattr(self, key, kwargs[key])
+        for key in ('directory', 'prerun', 'posttest'):
+            setattr(self, key, kwargs.get(key, None))
+        for key in ('options',):
+            setattr(self, key, kwargs.get(key, '').split())
         
     def get_results(self, commands):
         status = subprocess.call(commands)
@@ -89,35 +65,52 @@ class ExtractorTest(object):
         
     def write_script(self, commands):
         script = open(TESTSCRIPT_NAME, 'w')
-        script.write("%s%s\n" % (SCRIPT_PROLOGUE, '\n'.join(commands)))
+        script.write("%s%s\n" % (SCRIPT_PROLOGUE, commands))
         script.close()
         subprocess.call(['chmod', 'u+w', TESTSCRIPT_NAME])
 
     def get_shell_results(self):
-        self.write_script(self.shell_commands)
-        return self.get_results(['sh', TESTSCRIPT_NAME, self.archive_filename])
+        self.write_script(self.baseline)
+        return self.get_results(['sh', TESTSCRIPT_NAME, self.filename])
 
     def get_extractor_results(self):
-        script = os.path.join(self.directory, '../scripts/x')
-        return self.get_results([script] + self.arguments +
-                                [self.archive_filename])
+        if self.prerun:
+            self.write_script(self.prerun)
+            subprocess.call(['sh', TESTSCRIPT_NAME])
+        return self.get_results([X_SCRIPT] + self.options + [self.filename])
         
     def get_posttest_result(self):
-        if not self.shell_test:
+        if not self.posttest:
             return 0
-        self.write_script(self.shell_test)
+        self.write_script(self.posttest)
         return subprocess.call(['sh', TESTSCRIPT_NAME])
 
     def clean(self):
-        status = subprocess.call(['find', '-mindepth', '1', '-maxdepth', '1',
-                                  '-type', 'd',
-                                  '!', '-name', 'CVS', '!', '-name', '.svn',
-                                  '-exec', 'rm', '-rf', '{}', ';'])
+        if self.directory:
+            target = os.path.join(ROOT_DIR, self.directory)
+            extra_options = ['!', '-name', TESTSCRIPT_NAME]
+        else:
+            target = ROOT_DIR
+            extra_options = ['-type', 'd',
+                             '!', '-name', 'CVS',
+                             '!', '-name', '.svn']
+        status = subprocess.call(['find', target,
+                                  '-mindepth', '1', '-maxdepth', '1'] +
+                                 extra_options +
+                                 ['-exec', 'rm', '-rf', '{}', ';'])
         if status != 0:
             raise ExtractorTestError("cleanup exited with status code %s" %
                                      (status,))
 
-    def run(self):
+    def show_status(self, status, message=None):
+        if message is None:
+            last_part = ''
+        else:
+            last_part = ': ' + message
+        print "%7s: %s%s" % (status, self.name, last_part)
+        return status.lower()
+
+    def compare_results(self):
         self.clean()
         expected = self.get_shell_results()
         self.clean()
@@ -129,41 +122,48 @@ class ExtractorTest(object):
         elif actual is None:
             raise ExtractorTestError("could not get extractor results")
         elif expected != actual:
-            print "FAILED:", self.archive_filename
+            result = self.show_status('FAILED')
             print "Only in baseline results:"
             print '\n'.join(expected.difference(actual))
             print "Only in actual results:"
             print '\n'.join(actual.difference(expected))
-            return False
         elif posttest_result != 0:
-            print "FAILED:", self.archive_filename
+            result = self.show_status('FAILED')
             print "Posttest returned status code", posttest_result
-            print actual
-            return False
         else:
-            print "Passed:", self.archive_filename
-            return True
-
-
-def run_tests(directory, testnames):
-    successes = 0
-    failures = 0
-    for testname in testnames:
-        test = ExtractorTest(directory, testname, tests[testname])
-        if test.run():
-            successes += 1
-        else:
-            failures += 1
-    return successes, failures
+            result = self.show_status('Passed')
+        return result
     
-results = []
-testnames = tests.keys()
-testnames.sort()
-results.append(run_tests('.', testnames))
-os.mkdir('inside-dir')
-os.chdir('inside-dir')
-results.append(run_tests('..', testnames))
-os.chdir('..')
-subprocess.call(['rm', '-rf', 'inside-dir'])
-print "Totals: %s successes, %s failures" % \
-      tuple([sum(total) for total in zip(*results)])
+    def run(self):
+        if self.directory:
+            os.mkdir(self.directory)
+            os.chdir(self.directory)
+        try:
+            result = self.compare_results()
+        except ExtractorTestError, error:
+            result = self.show_status('ERROR', error)
+        if self.directory:
+            os.chdir(ROOT_DIR)
+            subprocess.call(['rm', '-rf', self.directory])
+        return result
+
+
+test_db = open('tests.yml')
+test_data = syck.load(test_db.read(-1))
+test_db.close()
+tests = [ExtractorTest(**data) for data in test_data]
+for original_data in test_data:
+    if original_data.has_key('directory'):
+        continue
+    data = original_data.copy()
+    data['name'] += ' in ..'
+    data['directory'] = 'inside-dir'
+    data['filename'] = os.path.join('..', data['filename'])
+    tests.append(ExtractorTest(**data))
+results = [test.run() for test in tests]
+counts = {}
+for outcome in OUTCOMES:
+    counts[outcome] = 0
+for result in results:
+    counts[result] += 1
+print " Totals:", ', '.join(["%s %s" % (counts[key], key) for key in OUTCOMES])

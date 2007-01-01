@@ -28,7 +28,7 @@ import tempfile
 
 from cStringIO import StringIO
 
-VERSION = "2.0"
+VERSION = "2.1"
 VERSION_BANNER = """x version %s
 Copyright (c) 2006 Brett Smith <brettcsmith@brettcsmith.org>
 
@@ -46,9 +46,56 @@ MATCHING_DIRECTORY = 1
 # ONE_DIRECTORY = 2
 BOMB = 3
 EMPTY = 4
+DECOMPRESSED = 5
 
 mimetypes.encodings_map.setdefault('.bz2', 'bzip2')
 mimetypes.types_map['.exe'] = 'application/x-msdos-program'
+
+def run_command(command, description, stdout=None, stderr=None, stdin=None):
+    process = subprocess.Popen(command, stdin=stdin, stdout=stdout,
+                               stderr=stderr)
+    status = process.wait()
+    for pipe in (process.stdout, process.stderr):
+        try:
+            pipe.close()
+        except AttributeError:
+            pass
+    if status != 0:
+        return ("%s error: '%s' returned status code %s" %
+                (description, ' '.join(command), status))
+    return None
+
+class FilenameChecker(object):
+    def __init__(self, original_name):
+        self.original_name = original_name
+
+    def is_free(self, filename=None):
+        if filename is None:
+            filename = self.original_name
+        return self._is_free(filename)
+
+    def _is_free(self, filename):
+        return not os.path.exists(filename)
+
+    def check(self):
+        for suffix in [''] + ['.%s' % (x,) for x in range(1, 10)]:
+            filename = '%s%s' % (self.original_name, suffix)
+            if self.is_free(filename):
+                return filename
+        raise ValueError("all alternatives for name %s taken" %
+                         (self.original_name,))
+        
+
+class DirectoryChecker(FilenameChecker):
+    def _is_free(self, filename):
+        try:
+            os.mkdir(filename)
+        except OSError, error:
+            if error.errno == errno.EEXIST:
+                return False
+            raise
+        return True
+
 
 class ExtractorError(Exception):
     pass
@@ -89,10 +136,12 @@ class ProcessStreamer(object):
 class BaseExtractor(object):
     decoders = {'bzip2': 'bzcat', 'gzip': 'zcat', 'compress': 'zcat'}
 
+    name_checker = DirectoryChecker
+
     def __init__(self, filename, mimetype, encoding):
         if encoding and (not self.decoders.has_key(encoding)):
             raise ValueError("unrecognized encoding %s" % (encoding,))
-        self.filename = filename
+        self.filename = os.path.realpath(filename)
         self.mimetype = mimetype
         self.encoding = encoding
         self.included_archives = []
@@ -107,17 +156,9 @@ class BaseExtractor(object):
 
     def run(self, command, description="extraction", stdout=None, stderr=None,
             stdin=None):
-        process = subprocess.Popen(command, stdin=stdin, stdout=stdout,
-                                   stderr=stderr)
-        status = process.wait()
-        if status != 0:
-            raise ExtractorError("%s error: '%s' returned status code %s" %
-                                 (description, ' '.join(command), status))
-        for pipe in (process.stdout, process.stderr):
-            try:
-                pipe.close()
-            except AttributeError:
-                pass
+        error = run_command(command, description, stdout, stderr, stdin)
+        if error:
+            raise ExtractorError(error)
 
     def pipe(self, command, description, stderr=None):
         output = tempfile.TemporaryFile()
@@ -166,21 +207,24 @@ class BaseExtractor(object):
         return '.'.join(pieces)
 
     def extract(self, path):
+        old_path = os.path.realpath(os.curdir)
+        os.chdir(path)
         self.archive.seek(0, 0)
         self.extract_archive()
+        os.chdir(old_path)
     
 
 class TarExtractor(BaseExtractor):
     def get_filenames(self):
         return ProcessStreamer(['tar', '-t'], self.archive)
 
-    def extract_archive(self):
+    def extract_archive(self): 
         self.run(['tar', '-x'], stdin=self.archive)
         
         
 class ZipExtractor(BaseExtractor):
     def __init__(self, filename, mimetype, encoding):
-        self.filename = filename
+        self.filename = os.path.realpath(filename)
         self.mimetype = mimetype
         self.encoding = encoding
         self.included_archives = []
@@ -189,8 +233,8 @@ class ZipExtractor(BaseExtractor):
     def get_filenames(self):
         return ProcessStreamer(['zipinfo', '-1', self.filename], None)
 
-    def extract(self, path):
-        self.run(['unzip', '-q', os.path.join(path, self.filename)])
+    def extract_archive(self):
+        self.run(['unzip', '-q', self.filename])
 
 
 class CpioExtractor(BaseExtractor):
@@ -247,63 +291,89 @@ class DebExtractor(TarExtractor):
         return BOMB
         
 
-class MatchHandler(object):
-    def __init__(self, extractor, contents):
+class CompressionExtractor(BaseExtractor):
+    name_checker = FilenameChecker
+
+    def basename(self):
+        pieces = os.path.basename(self.filename).split('.')
+        extension = '.' + pieces[-1]
+        if mimetypes.encodings_map.has_key(extension):
+            pieces.pop()
+        return '.'.join(pieces)
+
+    def suggest_target(self):
+        return FilenameChecker().check(self.basename())
+
+    def check_contents(self):
+        return self.basename()
+
+    def extract(self, path):
+        output = open(path, 'w')
+        self.run(['cat'], "output write", stdin=self.archive, stdout=output)
+        output.close()
+        
+
+class BaseHandler(object):
+    def __init__(self, extractor, contents, options):
         self.logger = logging.getLogger('x-log')
         self.extractor = extractor
         self.contents = contents
-        self.directory = extractor.basename()
+        self.options = options
 
-    def extract(self, directory='.'):
+    def extract(self):
+        checker = self.extractor.name_checker(self.extractor.basename())
+        if self.options.overwrite or checker.is_free():
+            self.target = self.extractor.basename()
+            self.overwrite()
+        else:
+            self.target = checker.check()
+            self.safe_extract()
+
+    def do_extract(self, directory):
         try:
             self.extractor.extract(directory)
         except ExtractorError, error:
             return error.strerror
-
+        
     def cleanup(self):
-        command = 'chmod'
-        status = subprocess.call(['chmod', '-R', 'u+rw', self.directory])
+        command = 'find'
+        status = subprocess.call(['find', self.target, '-type', 'd',
+                                  '-exec', 'chmod', 'u+rwx', '{}', ';'])
         if status == 0:
-            command = 'find'
-            status = subprocess.call(['find', self.directory, '-type', 'd',
-                                      '-exec', 'chmod', 'u+x', '{}', ';'])
+            command = 'chmod'
+            status = subprocess.call(['chmod', '-R', 'u+rw', self.target])
         if status != 0:
             return "%s returned with exit status %s" % (command, status)
-        
-        
-class BombHandler(MatchHandler):
-    def __init__(self, extractor, contents):
-        MatchHandler.__init__(self, extractor, contents)
-        basename = self.directory
-        for suffix in [''] + ['.%s' % (x,) for x in range(1, 10)]:
-            self.directory = '%s%s' % (basename, suffix)
-            try:
-                os.mkdir(self.directory)
-            except OSError, error:
-                if error.errno == errno.EEXIST:
-                    continue
-                raise ValueError("could not make extraction directory %s: %s" %
-                                 (error.filename, error.strerror))
-            if suffix != '':
-                self.logger.warning("%s: extracted to %s",
-                                    extractor.filename, self.directory)
-            break
-        else:
-            raise ValueError("all good names for an extraction directory taken")
 
-    def extract(self):
-        os.chdir(self.directory)
-        return MatchHandler.extract(self, '..')
 
-    def cleanup(self):
-        os.chdir('..')
-        return MatchHandler.cleanup(self)
+class MatchHandler(BaseHandler):
+    def overwrite(self):
+        return self.do_extract('.')
+
+    def safe_extract(self):
+        tempdir = tempfile.mkdtemp()
+        result = self.do_extract(tempdir)
+        if result is None:
+            os.rename(os.path.join(tempdir, self.extractor.basename()),
+                      self.target)
+            os.rmdir(tempdir)
+        return result
         
+        
+class BombHandler(BaseHandler):
+    def safe_extract(self):
+        return self.do_extract(self.target)
+
+    def overwrite(self):
+        self.target = self.extractor.basename()
+        return self.do_extract(self.target)
+
 
 class EmptyHandler(object):
-    def __init__(self, extractor, contents): pass
+    def __init__(self, extractor, contents, options): pass
     def extract(self): pass
     def cleanup(self): pass
+
 
 extractor_map = {'application/x-tar': TarExtractor,
                  'application/zip': ZipExtractor,
@@ -314,7 +384,8 @@ extractor_map = {'application/x-tar': TarExtractor,
                  'application/x-cpio': CpioExtractor}
 
 handler_map = {EMPTY: EmptyHandler,
-               MATCHING_DIRECTORY: MatchHandler}
+               MATCHING_DIRECTORY: MatchHandler,
+               DECOMPRESSED: BombHandler}
 
 class ExtractorApplication(object):
     def __init__(self, arguments):
@@ -338,6 +409,15 @@ class ExtractorApplication(object):
         parser.add_option('-v', '--verbose', dest='verbose',
                           action='count', default=0,
                           help='be verbose/print debugging information')
+        parser.add_option('-o', '--overwrite', dest='overwrite',
+                          action='store_true', default=False,
+                          help='overwrite any existing target directory')
+##         parser.add_option('-f', '--flat', '--no-directory', dest='flat',
+##                           action='store_true', default=False,
+##                           help="don't put contents in their own directory")
+##         parser.add_option('-n', '--noninteractive', dest='batch',
+##                           action='store_true', default=False,
+##                           help="don't ask how to handle special cases")
         self.options, filenames = parser.parse_args(arguments)
         if not filenames:
             parser.error("you did not list any archives")
@@ -357,13 +437,17 @@ class ExtractorApplication(object):
         try:
             extractor = extractor_map[mimetype]
         except KeyError:
-            return "not a known archive type"
+            if encoding:
+                extractor = CompressionExtractor
+            else:
+                return "not a known archive type"
         try:
             self.current_extractor = extractor(self.current_filename, mimetype,
                                                encoding)
             content = self.current_extractor.check_contents()
             handler = handler_map.get(content, BombHandler)
-            self.current_handler = handler(self.current_extractor, content)
+            self.current_handler = handler(self.current_extractor, content,
+                                           self.options)
         except ExtractorError, error:
             return str(error)
 
@@ -373,7 +457,7 @@ class ExtractorApplication(object):
         for filename in self.current_extractor.included_archives:
             tail_path, basename = os.path.split(filename)
             directory = os.path.join(self.current_directory,
-                                     self.current_handler.directory, tail_path)
+                                     self.current_handler.target, tail_path)
             self.archives.setdefault(directory, []).append(basename)
 
     def report(self, function, *args):

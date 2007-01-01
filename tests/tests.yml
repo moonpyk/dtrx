@@ -1,0 +1,81 @@
+- name: basic .tar
+  filename: test-1.23.tar
+  baseline: |
+    tar -xf $1
+
+- name: basic .tar.gz
+  filename: test-1.23.tar.gz
+  baseline: |
+    tar -zxf $1
+
+- name: basic .tar.bz2
+  filename: test-1.23.tar.bz2
+  baseline: |
+    mkdir test-1.23
+    cd test-1.23
+    tar -jxf ../$1
+
+- name: basic .zip
+  filename: test-1.23.zip
+  baseline: |
+    mkdir test-1.23
+    cd test-1.23
+    unzip -q ../$1
+
+- name: basic .deb
+  filename: test-1.23_all.deb
+  baseline: |
+    TD=$PWD
+    mkdir test-1.23
+    cd /tmp
+    ar x $TD/$1 data.tar.gz
+    cd $TD/test-1.23
+    tar -zxf /tmp/data.tar.gz
+    rm /tmp/data.tar.gz
+
+- name: recursion and permissions
+  filename: test-recursive-badperms.tar.bz2
+  options: -r
+  baseline: |
+    mkdir test-recursive-badperms
+    cd test-recursive-badperms
+    tar -jxf ../$1
+    mkdir test-badperms
+    cd test-badperms
+    tar -xf ../test-badperms.tar
+    chmod 755 testdir
+  posttest: |
+    if [ "x`cat test-recursive-badperms/test-badperms/testdir/testfile`" = \
+         "xhey" ]; then exit 0; else exit 1; fi
+
+- name: decompression
+  directory: inside-dir
+  filename: ../test-text.gz
+  baseline: |
+    zcat $1 >test-text
+
+- name: decompression with -r
+  directory: inside-dir
+  filename: ../test-text.gz
+  options: -r
+  baseline: |
+    zcat $1 >test-text
+
+- name: overwrite protection
+  filename: test-1.23.tar.bz2
+  baseline: |
+    mkdir test-1.23 test-1.23.1
+    cd test-1.23.1
+    tar -jxf ../$1
+  prerun: |
+    mkdir test-1.23
+
+- name: overwrite option
+  filename: test-1.23.tar.bz2
+  options: -o
+  baseline: |
+    mkdir test-1.23
+    cd test-1.23
+    tar -jxf ../$1
+  prerun: |
+    mkdir test-1.23 
