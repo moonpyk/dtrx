@@ -1,29 +1,29 @@
 - name: basic .tar
-  filename: test-1.23.tar
+  filenames: test-1.23.tar
   baseline: |
     tar -xf $1
 
 - name: basic .tar.gz
-  filename: test-1.23.tar.gz
+  filenames: test-1.23.tar.gz
   baseline: |
     tar -zxf $1
 
 - name: basic .tar.bz2
-  filename: test-1.23.tar.bz2
+  filenames: test-1.23.tar.bz2
   baseline: |
     mkdir test-1.23
     cd test-1.23
     tar -jxf ../$1
 
 - name: basic .zip
-  filename: test-1.23.zip
+  filenames: test-1.23.zip
   baseline: |
     mkdir test-1.23
     cd test-1.23
     unzip -q ../$1
 
 - name: basic .deb
-  filename: test-1.23_all.deb
+  filenames: test-1.23_all.deb
   baseline: |
     TD=$PWD
     mkdir test-1.23
@@ -34,7 +34,7 @@
     rm /tmp/data.tar.gz
 
 - name: recursion and permissions
-  filename: test-recursive-badperms.tar.bz2
+  filenames: test-recursive-badperms.tar.bz2
   options: -r
   baseline: |
     mkdir test-recursive-badperms
@@ -50,26 +50,26 @@
 
 - name: decompression
   directory: inside-dir
-  filename: ../test-text.gz
+  filenames: ../test-text.gz
   baseline: |
     zcat $1 >test-text
 
 - name: decompression with -r
   directory: inside-dir
-  filename: ../test-text.gz
+  filenames: ../test-text.gz
   options: -r
   baseline: |
     zcat $1 >test-text
 
 - name: decompression with -fr
   directory: inside-dir
-  filename: ../test-text.gz
+  filenames: ../test-text.gz
   options: -fr
   baseline: |
     zcat $1 >test-text
 
 - name: overwrite protection
-  filename: test-1.23.tar.bz2
+  filenames: test-1.23.tar.bz2
   baseline: |
     mkdir test-1.23 test-1.23.1
     cd test-1.23.1
@@ -78,7 +78,7 @@
     mkdir test-1.23
 
 - name: overwrite option
-  filename: test-1.23.tar.bz2
+  filenames: test-1.23.tar.bz2
   options: -o
   baseline: |
     mkdir test-1.23
@@ -89,14 +89,14 @@
 
 - name: flat option
   directory: inside-dir
-  filename: ../test-1.23.tar.bz2
+  filenames: ../test-1.23.tar.bz2
   options: -f
   baseline: |
     tar -jxf $1
 
 - name: flat recursion and permissions
   directory: inside-dir
-  filename: ../test-recursive-badperms.tar.bz2
+  filenames: ../test-recursive-badperms.tar.bz2
   options: -fr
   baseline: |
     tar -jxf $1
@@ -104,4 +104,49 @@
     chmod 755 testdir
   posttest: |
     if [ "x`cat testdir/testfile`" != "xhey" ]; then exit 1; fi
+
+- name: no files
+  error: true
+  grep: "[Uu]sage"
+
+- name: bad file
+  error: true
+  filenames: nonexistent-file.tar
+
+- name: not an archive
+  error: true
+  filenames: tests.yml
+
+- name: bad options
+  options: --nonexistent-option
+  filenames: test-1.23.tar
+  error: true
+
+- name: --version
+  options: --version
+  grep: ersion \d+\.\d+
+  filenames: test-1.23.tar
+  baseline: |
+    exit 0
+
+- name: one good archive of many
+  filenames: tests.yml test-1.23.tar nonexistent-file.tar
+  error: true
+  baseline: |
+    tar -xf $2
+
+- name: silence
+  filenames: tests.yml
+  options: -qq
+  error: true
+  antigrep: .
+
+- name: can't write to directory
+  directory: inside-dir
+  filenames: ../test-1.23.tar
+  error: true
+  grep: ERROR
+  antigrep: Traceback
+  prerun: |
+    chmod 500 .
 

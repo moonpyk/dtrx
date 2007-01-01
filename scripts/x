@@ -70,12 +70,7 @@ class FilenameChecker(object):
     def __init__(self, original_name):
         self.original_name = original_name
 
-    def is_free(self, filename=None):
-        if filename is None:
-            filename = self.original_name
-        return self._is_free(filename)
-
-    def _is_free(self, filename):
+    def is_free(self, filename):
         return not os.path.exists(filename)
 
     def check(self):
@@ -88,7 +83,7 @@ class FilenameChecker(object):
         
 
 class DirectoryChecker(FilenameChecker):
-    def _is_free(self, filename):
+    def is_free(self, filename):
         try:
             os.mkdir(filename)
         except OSError, error:
@@ -322,42 +317,17 @@ class BaseHandler(object):
         self.extractor = extractor
         self.contents = contents
         self.options = options
-
-##     def extract(self):
-##         raise NotImplementedError
-##         checker = self.extractor.name_checker(self.extractor.basename())
-##         if self.options.flat:
-##             self.target = '.'
-##             return self.do_extract('.')
-##         elif self.options.overwrite or checker.is_free():
-##             self.target = self.extractor.basename()
-##             return self.overwrite()
-##         else:
-##             self.target = checker.check()
-##             return self.safe_extract()
+        self.target = None
 
     def extract(self):
         try:
             self.extractor.extract(self.target)
-        except ExtractorError, error:
+        except (ExtractorError, IOError, OSError), error:
             return str(error)
         
     def cleanup(self):
-        raise NotImplementedError
-        if self.options.flat:
-            self.cleanup_files()
-        else:
-            self.cleanup_directory()
-
-    def cleanup_files(self):
-        for filename in self.extractor.get_filenames():
-            stat_info = os.stat(filename)
-            perms = stat.S_IRUSR | stat.S_IWUSR
-            if stat.S_ISDIR(stat_info.st_mode):
-                perms |= stat.S_IXUSR
-            os.chmod(filename, stat_info.st_mode | perms)
-
-    def cleanup_directory(self):
+        if self.target is None:
+            return
         command = 'find'
         status = subprocess.call(['find', self.target, '-type', 'd',
                                   '-exec', 'chmod', 'u+rwx', '{}', ';'])
@@ -376,15 +346,23 @@ class BaseHandler(object):
 # Match   .              .                    tempdir + checked
 # Bomb    .              basename             DirectoryChecked
 
-
 class FlatHandler(BaseHandler):
     def can_handle(contents, options):
         return ((options.flat and (contents != COMPRESSED)) or
                 (options.overwrite and (contents == MATCHING_DIRECTORY)))
     can_handle = staticmethod(can_handle)
 
-    target = '.'
-    cleanup = BaseHandler.cleanup_files
+    def __init__(self, extractor, contents, options):
+        BaseHandler.__init__(self, extractor, contents, options)
+        self.target = '.'
+
+    def cleanup(self):
+        for filename in self.extractor.get_filenames():
+            stat_info = os.stat(filename)
+            perms = stat.S_IRUSR | stat.S_IWUSR
+            if stat.S_ISDIR(stat_info.st_mode):
+                perms |= stat.S_IXUSR
+            os.chmod(filename, stat_info.st_mode | perms)
 
 
 class OverwriteHandler(BaseHandler):
@@ -396,8 +374,6 @@ class OverwriteHandler(BaseHandler):
     def __init__(self, extractor, contents, options):
         BaseHandler.__init__(self, extractor, contents, options)
         self.target = self.extractor.basename()
-
-    cleanup = BaseHandler.cleanup_directory
         
 
 class MatchHandler(BaseHandler):
@@ -407,7 +383,7 @@ class MatchHandler(BaseHandler):
 
     def extract(self):
         basename = self.extractor.basename()
-        self.target = tempfile.mkdtemp()
+        self.target = tempfile.mkdtemp(dir='.')
         result = BaseHandler.extract(self)
         if result is None:
             tempdir = self.target
@@ -416,8 +392,6 @@ class MatchHandler(BaseHandler):
             os.rename(os.path.join(tempdir, basename), self.target)
             os.rmdir(tempdir)
         return result
-
-    cleanup = BaseHandler.cleanup_directory
 
 
 class EmptyHandler(object):
@@ -440,18 +414,7 @@ class BombHandler(BaseHandler):
         checker = self.extractor.name_checker(self.extractor.basename())
         self.target = checker.check()
 
-    cleanup = BaseHandler.cleanup_directory
-
         
-## class BombHandler(BaseHandler):
-##     def safe_extract(self):
-##         return self.do_extract(self.target)
-
-##     def overwrite(self):
-##         self.target = self.extractor.basename()
-##         return self.do_extract(self.target)
-
-
 extractor_map = {'application/x-tar': TarExtractor,
                  'application/zip': ZipExtractor,
                  'application/x-msdos-program': ZipExtractor,
@@ -540,7 +503,10 @@ class ExtractorApplication(object):
             self.archives.setdefault(directory, []).append(basename)
 
     def report(self, function, *args):
-        error = function(*args)
+        try:
+            error = function(*args)
+        except (ExtractorError, IOError, OSError), exception:
+            error = str(exception)
         if error:
             self.logger.error("%s: %s", self.current_filename, error)
             return False
@@ -552,7 +518,6 @@ class ExtractorApplication(object):
             for filename in filenames:
                 os.chdir(self.current_directory)
                 self.current_filename = filename
-                self.cleanup_actions = []
                 success = self.report(self.get_extractor)
                 if success:
                     for name in 'extract', 'cleanup':
