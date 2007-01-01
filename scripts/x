@@ -22,6 +22,7 @@ import logging
 import mimetypes
 import optparse
 import os
+import stat
 import subprocess
 import sys
 import tempfile
@@ -171,7 +172,6 @@ class BaseExtractor(object):
         pass
 
     def check_contents(self):
-        self.archive.seek(0, 0)
         archive_type = None
         filenames = self.get_filenames()
         try:
@@ -216,6 +216,7 @@ class BaseExtractor(object):
 
 class TarExtractor(BaseExtractor):
     def get_filenames(self):
+        self.archive.seek(0, 0)
         return ProcessStreamer(['tar', '-t'], self.archive)
 
     def extract_archive(self): 
@@ -231,6 +232,7 @@ class ZipExtractor(BaseExtractor):
         self.archive = StringIO()
 
     def get_filenames(self):
+        self.archive.seek(0, 0)
         return ProcessStreamer(['zipinfo', '-1', self.filename], None)
 
     def extract_archive(self):
@@ -239,6 +241,7 @@ class ZipExtractor(BaseExtractor):
 
 class CpioExtractor(BaseExtractor):
     def get_filenames(self):
+        self.archive.seek(0, 0)
         return ProcessStreamer(['cpio', '-t'], self.archive,
                                stderr=subprocess.PIPE)
 
@@ -301,11 +304,11 @@ class CompressionExtractor(BaseExtractor):
             pieces.pop()
         return '.'.join(pieces)
 
-    def suggest_target(self):
-        return FilenameChecker().check(self.basename())
+    def get_filenames(self):
+        yield self.basename()
 
     def check_contents(self):
-        return self.basename()
+        return DECOMPRESSED
 
     def extract(self, path):
         output = open(path, 'w')
@@ -322,20 +325,37 @@ class BaseHandler(object):
 
     def extract(self):
         checker = self.extractor.name_checker(self.extractor.basename())
-        if self.options.overwrite or checker.is_free():
+        if self.options.flat:
+            self.target = '.'
+            return self.do_extract('.')
+        elif self.options.overwrite or checker.is_free():
             self.target = self.extractor.basename()
-            self.overwrite()
+            return self.overwrite()
         else:
             self.target = checker.check()
-            self.safe_extract()
+            return self.safe_extract()
 
     def do_extract(self, directory):
         try:
             self.extractor.extract(directory)
         except ExtractorError, error:
-            return error.strerror
+            return str(error)
         
     def cleanup(self):
+        if self.options.flat:
+            self.cleanup_files()
+        else:
+            self.cleanup_directory()
+
+    def cleanup_files(self):
+        for filename in self.extractor.get_filenames():
+            stat_info = os.stat(filename)
+            perms = stat.S_IRUSR | stat.S_IWUSR
+            if stat.S_ISDIR(stat_info.st_mode):
+                perms |= stat.S_IXUSR
+            os.chmod(filename, stat_info.st_mode | perms)
+
+    def cleanup_directory(self):
         command = 'find'
         status = subprocess.call(['find', self.target, '-type', 'd',
                                   '-exec', 'chmod', 'u+rwx', '{}', ';'])
@@ -412,9 +432,9 @@ class ExtractorApplication(object):
         parser.add_option('-o', '--overwrite', dest='overwrite',
                           action='store_true', default=False,
                           help='overwrite any existing target directory')
-##         parser.add_option('-f', '--flat', '--no-directory', dest='flat',
-##                           action='store_true', default=False,
-##                           help="don't put contents in their own directory")
+        parser.add_option('-f', '--flat', '--no-directory', dest='flat',
+                          action='store_true', default=False,
+                          help="don't put contents in their own directory")
 ##         parser.add_option('-n', '--noninteractive', dest='batch',
 ##                           action='store_true', default=False,
 ##                           help="don't ask how to handle special cases")

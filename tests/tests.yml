@@ -79,3 +79,22 @@
     tar -jxf ../$1
   prerun: |
     mkdir test-1.23 
+
+- name: flat option
+  directory: inside-dir
+  filename: ../test-1.23.tar.bz2
+  options: -f
+  baseline: |
+    tar -jxf $1
+
+- name: flat recursion and permissions
+  directory: inside-dir
+  filename: ../test-recursive-badperms.tar.bz2
+  options: -fr
+  baseline: |
+    tar -jxf $1
+    tar -xf test-badperms.tar
+    chmod 755 testdir
+  posttest: |
+    if [ "x`cat testdir/testfile`" != "xhey" ]; then exit 1; fi
+

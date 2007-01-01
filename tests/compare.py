@@ -106,7 +106,7 @@ class ExtractorTest(object):
         if message is None:
             last_part = ''
         else:
-            last_part = ': ' + message
+            last_part = ': ' + str(message)
         print "%7s: %s%s" % (status, self.name, last_part)
         return status.lower()
 
