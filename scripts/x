@@ -47,7 +47,7 @@ MATCHING_DIRECTORY = 1
 # ONE_DIRECTORY = 2
 BOMB = 3
 EMPTY = 4
-DECOMPRESSED = 5
+COMPRESSED = 5
 
 mimetypes.encodings_map.setdefault('.bz2', 'bzip2')
 mimetypes.types_map['.exe'] = 'application/x-msdos-program'
@@ -308,7 +308,7 @@ class CompressionExtractor(BaseExtractor):
         yield self.basename()
 
     def check_contents(self):
-        return DECOMPRESSED
+        return COMPRESSED
 
     def extract(self, path):
         output = open(path, 'w')
@@ -323,25 +323,27 @@ class BaseHandler(object):
         self.contents = contents
         self.options = options
 
-    def extract(self):
-        checker = self.extractor.name_checker(self.extractor.basename())
-        if self.options.flat:
-            self.target = '.'
-            return self.do_extract('.')
-        elif self.options.overwrite or checker.is_free():
-            self.target = self.extractor.basename()
-            return self.overwrite()
-        else:
-            self.target = checker.check()
-            return self.safe_extract()
+##     def extract(self):
+##         raise NotImplementedError
+##         checker = self.extractor.name_checker(self.extractor.basename())
+##         if self.options.flat:
+##             self.target = '.'
+##             return self.do_extract('.')
+##         elif self.options.overwrite or checker.is_free():
+##             self.target = self.extractor.basename()
+##             return self.overwrite()
+##         else:
+##             self.target = checker.check()
+##             return self.safe_extract()
 
-    def do_extract(self, directory):
+    def extract(self):
         try:
-            self.extractor.extract(directory)
+            self.extractor.extract(self.target)
         except ExtractorError, error:
             return str(error)
         
     def cleanup(self):
+        raise NotImplementedError
         if self.options.flat:
             self.cleanup_files()
         else:
@@ -366,33 +368,88 @@ class BaseHandler(object):
             return "%s returned with exit status %s" % (command, status)
 
 
-class MatchHandler(BaseHandler):
-    def overwrite(self):
-        return self.do_extract('.')
+# The "where to extract" table, with options and archive types.
+# This dictates the contents of each can_handle method.
+#
+#         Flat           Overwrite            None
+# File    basename       basename             FilenameChecked
+# Match   .              .                    tempdir + checked
+# Bomb    .              basename             DirectoryChecked
 
-    def safe_extract(self):
-        tempdir = tempfile.mkdtemp()
-        result = self.do_extract(tempdir)
+
+class FlatHandler(BaseHandler):
+    def can_handle(contents, options):
+        return ((options.flat and (contents != COMPRESSED)) or
+                (options.overwrite and (contents == MATCHING_DIRECTORY)))
+    can_handle = staticmethod(can_handle)
+
+    target = '.'
+    cleanup = BaseHandler.cleanup_files
+
+
+class OverwriteHandler(BaseHandler):
+    def can_handle(contents, options):
+        return ((options.flat and (contents == COMPRESSED)) or
+                (options.overwrite and (contents != MATCHING_DIRECTORY)))
+    can_handle = staticmethod(can_handle)
+
+    def __init__(self, extractor, contents, options):
+        BaseHandler.__init__(self, extractor, contents, options)
+        self.target = self.extractor.basename()
+
+    cleanup = BaseHandler.cleanup_directory
+        
+
+class MatchHandler(BaseHandler):
+    def can_handle(contents, options):
+        return contents == MATCHING_DIRECTORY
+    can_handle = staticmethod(can_handle)
+
+    def extract(self):
+        basename = self.extractor.basename()
+        self.target = tempfile.mkdtemp()
+        result = BaseHandler.extract(self)
         if result is None:
-            os.rename(os.path.join(tempdir, self.extractor.basename()),
-                      self.target)
+            tempdir = self.target
+            checker = self.extractor.name_checker(basename)
+            self.target = checker.check()
+            os.rename(os.path.join(tempdir, basename), self.target)
             os.rmdir(tempdir)
         return result
-        
-        
-class BombHandler(BaseHandler):
-    def safe_extract(self):
-        return self.do_extract(self.target)
 
-    def overwrite(self):
-        self.target = self.extractor.basename()
-        return self.do_extract(self.target)
+    cleanup = BaseHandler.cleanup_directory
 
 
 class EmptyHandler(object):
+    def can_handle(contents, options):
+        return contents == EMPTY
+    can_handle = staticmethod(can_handle)
+
     def __init__(self, extractor, contents, options): pass
     def extract(self): pass
     def cleanup(self): pass
+
+
+class BombHandler(BaseHandler):
+    def can_handle(contents, options):
+        return True
+    can_handle = staticmethod(can_handle)
+
+    def __init__(self, extractor, contents, options):
+        BaseHandler.__init__(self, extractor, contents, options)
+        checker = self.extractor.name_checker(self.extractor.basename())
+        self.target = checker.check()
+
+    cleanup = BaseHandler.cleanup_directory
+
+        
+## class BombHandler(BaseHandler):
+##     def safe_extract(self):
+##         return self.do_extract(self.target)
+
+##     def overwrite(self):
+##         self.target = self.extractor.basename()
+##         return self.do_extract(self.target)
 
 
 extractor_map = {'application/x-tar': TarExtractor,
@@ -403,9 +460,8 @@ extractor_map = {'application/x-tar': TarExtractor,
                  'application/x-rpm': RPMExtractor,
                  'application/x-cpio': CpioExtractor}
 
-handler_map = {EMPTY: EmptyHandler,
-               MATCHING_DIRECTORY: MatchHandler,
-               DECOMPRESSED: BombHandler}
+handlers = [FlatHandler, OverwriteHandler, MatchHandler, EmptyHandler,
+            BombHandler]
 
 class ExtractorApplication(object):
     def __init__(self, arguments):
@@ -459,15 +515,18 @@ class ExtractorApplication(object):
         except KeyError:
             if encoding:
                 extractor = CompressionExtractor
+                contents = COMPRESSED
             else:
                 return "not a known archive type"
         try:
             self.current_extractor = extractor(self.current_filename, mimetype,
                                                encoding)
             content = self.current_extractor.check_contents()
-            handler = handler_map.get(content, BombHandler)
-            self.current_handler = handler(self.current_extractor, content,
-                                           self.options)
+            for handler in handlers:
+                if handler.can_handle(content, self.options):
+                    self.current_handler = handler(self.current_extractor,
+                                                   content, self.options)
+                    break
         except ExtractorError, error:
             return str(error)
 

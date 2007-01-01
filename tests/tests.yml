@@ -61,6 +61,13 @@
   baseline: |
     zcat $1 >test-text
 
+- name: decompression with -fr
+  directory: inside-dir
+  filename: ../test-text.gz
+  options: -fr
+  baseline: |
+    zcat $1 >test-text
+
 - name: overwrite protection
   filename: test-1.23.tar.bz2
   baseline: |
