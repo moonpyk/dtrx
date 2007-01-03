@@ -29,7 +29,7 @@ import tempfile
 
 from cStringIO import StringIO
 
-VERSION = "2.1"
+VERSION = "3.0"
 VERSION_BANNER = """x version %s
 Copyright (c) 2006 Brett Smith <brettcsmith@brettcsmith.org>
 

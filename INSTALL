@@ -1,0 +1,47 @@
+x Installation Documentation
+============================
+
+Requirements
+------------
+
+To run x, you'll need Python_ 2.4 or greater.  You can also use Python 2.3
+if you separately install the `subprocess module`_.
+
+.. _Python: http://www.python.org/
+.. _`subprocess module`: http://www.lysator.liu.se/~astrand/popen5/
+
+x calls out to different external tools to support different archive types.
+Most of these are already installed on most GNU/Linux systems, so you
+probably won't have to worry about these too much, but just for
+completeness, the exact requirements for each format are as follows:
+
+tar archives
+  tar
+
+zip archives
+  unzip, zipinfo
+
+cpio archives
+  cpio
+
+rpm archives
+  rpm2cpio, cpio
+
+deb archives
+  ar, tar, zcat
+
+Files compressed with gzip or compress
+  zcat
+
+Files compressed with bzip2
+  bzcat
+
+Installation
+------------
+
+x is just a simple script, making it easy to stash wherever you need it.
+Just copy ``scripts/x`` to a location that's convenient for you.  If you'd
+like to install the program system-wide, you can run the following as root
+or equivalent::
+
+   python setup.py install

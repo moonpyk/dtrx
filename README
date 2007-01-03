@@ -1,0 +1,79 @@
+x - Intelligent archive extraction
+==================================
+
+Introduction
+------------
+
+x extracts archives in a number of different formats; it currently supports
+tar, zip, cpio, rpm, and deb.  It can also decompress files compressed with
+gzip, bzip2, or compress.
+
+In addition to providing one command to handle many different archive
+types, x also aids the user by extracting contents consistently.  By
+default, everything will be written to a dedicated directory that's named
+after the archive.  x will also change the permissions to ensure that the
+owner can read and write all those files.
+
+Running x
+---------
+
+To run x, simply call it with the archive(s) you wish to extract as
+arguments.  For example::
+
+   x coreutils-5.*.tar.gz
+
+x supports a number of options to mandate specific behavior:
+
+-r, --recursive
+   With this option, x will search inside the archives you specify to see
+   if any of the contents are themselves archives, and extract those as
+   well.
+
+-o, --overwrite
+   Normally, x will avoid extracting into a directory that already exists,
+   and instead try to find an alternative name to use.  If this option is
+   listed, x will use the default directory name no matter what.
+
+-f, --flat
+   Extract archive contents into the current directory, instead of their
+   own dedicated directory.  This is handy if you have multiple archive
+   files which all need to be extracted into the same directory structure.
+   Note that existing files may be overwritten with this option.
+
+-q, --quiet
+   Suppress warning messages.  Listing this option twice will cause the
+   x to be silent if at all possible.
+
+-v, --verbose
+   Print more information about x's behavior.  You can list this option up
+   to three times for more information.
+
+--help
+   Display basic help.
+
+--version
+   Display x's version, copyright, and license information.
+
+Other Useful Information
+------------------------
+
+x 3.0 is copyright (c) 2006 `Brett Smith`_.  Feel free to send comments,
+bug reports, patches, and so on.  You can find the latest version of x on
+`its home page`_.
+
+.. _`Brett Smith`: mailto:brettcsmith@brettcsmith.org
+.. _`its home page`: http://www.brettcsmith.org/2006/x/
+
+x is free software; you can redistribute it and/or modify it under the
+terms of the GNU General Public License as published by the Free Software
+Foundation; either version 2 of the License, or (at your option) any later
+version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+more details.
+
+You should have received a copy of the GNU General Public License along
+with this program; if not, write to the Free Software Foundation, Inc., 51
+Franklin Street, 5th Floor, Boston, MA, 02111.

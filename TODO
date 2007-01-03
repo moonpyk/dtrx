@@ -1,8 +1,8 @@
 Things which I have a use case/anti-use case for:
-* Avoid overwriting directories.
-* Decompress non-archive files.
+* Figure out what the deal is with strerror.
 * Better error messages (file doesn't exist, isn't readable, etc.)
 * Interactivity: ask about overwriting, recursing, etc.
+* Consistently raise and handle exceptions.
 
 Things that are generally good:
 * Better tests.
@@ -14,3 +14,4 @@ Things I think might be good but can't prove:
 * Use zipfile instead of the zip commands.
 * Processing from stdin.
 * Extracting control.tar.gz from deb files.
+* shar support.
