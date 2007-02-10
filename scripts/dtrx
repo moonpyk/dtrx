@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# x -- Intelligently extract various archive types.
+# dtrx -- Intelligently extract various archive types.
 # Copyright (c) 2006 Brett Smith <brettcsmith@brettcsmith.org>.
 #
 # This program is free software; you can redistribute it and/or modify it
@@ -29,8 +29,8 @@ import tempfile
 
 from cStringIO import StringIO
 
-VERSION = "3.0"
-VERSION_BANNER = """x version %s
+VERSION = "4.0"
+VERSION_BANNER = """dtrx version %s
 Copyright (c) 2006 Brett Smith <brettcsmith@brettcsmith.org>
 
 This program is free software; you can redistribute it and/or modify it
@@ -313,7 +313,7 @@ class CompressionExtractor(BaseExtractor):
 
 class BaseHandler(object):
     def __init__(self, extractor, contents, options):
-        self.logger = logging.getLogger('x-log')
+        self.logger = logging.getLogger('dtrx-log')
         self.extractor = extractor
         self.contents = contents
         self.options = options
@@ -454,6 +454,9 @@ class ExtractorApplication(object):
         parser.add_option('-f', '--flat', '--no-directory', dest='flat',
                           action='store_true', default=False,
                           help="don't put contents in their own directory")
+        parser.add_option('-l', '-t', '--list', '--table', dest='show_list',
+                          action='store_true', default=False,
+                          help="list contents of archives on standard output")
 ##         parser.add_option('-n', '--noninteractive', dest='batch',
 ##                           action='store_true', default=False,
 ##                           help="don't ask how to handle special cases")
@@ -463,11 +466,11 @@ class ExtractorApplication(object):
         self.archives = {os.path.realpath(os.curdir): filenames}
 
     def setup_logger(self):
-        self.logger = logging.getLogger('x-log')
+        self.logger = logging.getLogger('dtrx-log')
         handler = logging.StreamHandler()
         # WARNING is the default.
         handler.setLevel(10 * (self.options.quiet - self.options.verbose))
-        formatter = logging.Formatter("x: %(levelname)s: %(message)s")
+        formatter = logging.Formatter("dtrx: %(levelname)s: %(message)s")
         handler.setFormatter(formatter)
         self.logger.addHandler(handler)
 
@@ -512,7 +515,13 @@ class ExtractorApplication(object):
             return False
         return True
 
-    def run(self):
+    def record_status(self, success):
+        if success:
+            self.successes.append(self.current_filename)
+        else:
+            self.failures.append(self.current_filename)
+
+    def extract(self):
         while self.archives:
             self.current_directory, filenames = self.archives.popitem()
             for filename in filenames:
@@ -524,10 +533,32 @@ class ExtractorApplication(object):
                         success = (self.report(getattr(self.current_handler,
                                                        name)) and success)
                     self.recurse()
-                if success:
-                    self.successes.append(self.current_filename)
-                else:
-                    self.failures.append(self.current_filename)
+                self.record_status(success)
+
+    def show_contents(self):
+        for filename in self.current_extractor.get_filenames():
+            print filename
+
+    def show_list(self):
+        filenames = self.archives.values()[0]
+        if len(filenames) > 1:
+            header = "%s:\n"
+        else:
+            header = None
+        for filename in filenames:
+            if header:
+                print header % (filename,),
+                header = "\n%s:\n"
+            self.current_filename = filename
+            success = (self.report(self.get_extractor) and
+                       self.report(self.show_contents))
+            self.record_status(success)
+
+    def run(self):
+        if self.options.show_list:
+            self.show_list()
+        else:
+            self.extract()
         if self.failures:
             return 1
         return 0

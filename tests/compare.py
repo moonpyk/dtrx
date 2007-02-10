@@ -26,15 +26,15 @@ import tempfile
 
 from sets import Set as set
 
-if os.path.exists('scripts/x') and os.path.exists('tests'):
+if os.path.exists('scripts/dtrx') and os.path.exists('tests'):
     os.chdir('tests')
-elif os.path.exists('../scripts/x') and os.path.exists('../tests'):
+elif os.path.exists('../scripts/dtrx') and os.path.exists('../tests'):
     pass
 else:
     print "ERROR: Can't run tests in this directory!"
     sys.exit(2)
 
-X_SCRIPT = os.path.realpath('../scripts/x')
+X_SCRIPT = os.path.realpath('../scripts/dtrx')
 ROOT_DIR = os.path.realpath(os.curdir)
 OUTCOMES = ['error', 'failed', 'passed']
 TESTSCRIPT_NAME = 'testscript.sh'
@@ -53,7 +53,7 @@ class ExtractorTest(object):
         for key in ('name',):
             setattr(self, key, kwargs[key])
         for key in ('directory', 'prerun', 'posttest', 'baseline', 'error',
-                    'grep', 'antigrep'):
+                    'grep', 'antigrep', 'output'):
             setattr(self, key, kwargs.get(key, None))
         for key in ('options', 'filenames'):
             setattr(self, key, kwargs.get(key, '').split())
@@ -144,14 +144,17 @@ class ExtractorTest(object):
             return "x returned error code %s" % (status,)
         return None
 
-    def grep_output(self):
-        output_buffer.seek(0, 0)
-        output_buffer.readline()
-        output = output_buffer.read(-1)
+    def grep_output(self, output):
         if self.grep and (not re.search(self.grep, output)):
             return "output did not match %s" % (self.grep)
         elif self.antigrep and re.search(self.antigrep, output):
             return "output matched antigrep %s" % (self.antigrep)
+        return None
+
+    def check_output(self, output):
+        if ((self.output is not None) and
+            (self.output.strip() != output.strip())):
+            return "output did not match provided text"
         return None
 
     def check_results(self):
@@ -159,10 +162,17 @@ class ExtractorTest(object):
         output_buffer.truncate()
         self.clean()
         status, actual = self.get_extractor_results()
-        problem = self.have_error_mismatch(status) or self.grep_output()
+        output_buffer.seek(0, 0)
+        output_buffer.readline()
+        output = output_buffer.read(-1)
+        problem = (self.have_error_mismatch(status) or
+                   self.check_output(output) or self.grep_output(output))
         if problem:
             return self.show_status('FAILED', problem)
-        return self.compare_results(actual)
+        if self.baseline:
+            return self.compare_results(actual)
+        else:
+            return self.show_status('Passed')
 
     def run(self):
         if self.directory:

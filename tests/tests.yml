@@ -150,3 +150,36 @@
   prerun: |
     chmod 500 .
 
+- name: list contents of one file
+  options: -l
+  filenames: test-1.23.tar
+  output: |
+    test-1.23/
+    test-1.23/1/
+    test-1.23/1/2/
+    test-1.23/1/2/3
+    test-1.23/a/
+    test-1.23/a/b
+    test-1.23/foobar
+
+- name: list contents of multiple files
+  options: --table
+  filenames: test-1.23_all.deb test-1.23.zip
+  output: |
+    test-1.23_all.deb:
+    1/
+    1/2/
+    1/2/3
+    a/
+    a/b
+    foobar
+    
+    test-1.23.zip:
+    1/2/3
+    a/b
+    foobar
+
+- name: list contents of compressed file
+  options: -t
+  filenames: test-text.gz
+  output: test-text
