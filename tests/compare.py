@@ -42,6 +42,7 @@ SCRIPT_PROLOGUE = """#!/bin/sh
 set -e
 """
 
+input_buffer = tempfile.TemporaryFile()
 output_buffer = tempfile.TemporaryFile()
 
 class ExtractorTestError(Exception):
@@ -50,19 +51,18 @@ class ExtractorTestError(Exception):
 
 class ExtractorTest(object):
     def __init__(self, **kwargs):
-        for key in ('name',):
-            setattr(self, key, kwargs[key])
+        setattr(self, 'name', kwargs['name'])
+        setattr(self, 'options', kwargs.get('options', '-n').split())
+        setattr(self, 'filenames', kwargs.get('filenames', '').split())
         for key in ('directory', 'prerun', 'posttest', 'baseline', 'error',
-                    'grep', 'antigrep', 'output'):
+                    'grep', 'antigrep', 'input', 'output'):
             setattr(self, key, kwargs.get(key, None))
-        for key in ('options', 'filenames'):
-            setattr(self, key, kwargs.get(key, '').split())
         
-    def get_results(self, commands):
+    def get_results(self, commands, stdin=None):
         print >>output_buffer, "Output from %s:" % (' '.join(commands),)
         output_buffer.flush()
         status = subprocess.call(commands, stdout=output_buffer,
-                                 stderr=output_buffer)
+                                 stderr=output_buffer, stdin=stdin)
         process = subprocess.Popen(['find', '!', '-name', TESTSCRIPT_NAME],
                                    stdout=subprocess.PIPE)
         process.wait()
@@ -84,7 +84,16 @@ class ExtractorTest(object):
         if self.prerun:
             self.write_script(self.prerun)
             subprocess.call(['sh', TESTSCRIPT_NAME])
-        return self.get_results([X_SCRIPT] + self.options + self.filenames)
+        input_buffer.seek(0, 0)
+        input_buffer.truncate()
+        if self.input:
+            input_buffer.write(self.input)
+            if not self.input.endswith('\n'):
+                input_buffer.write('\n')
+            input_buffer.seek(0, 0)
+        input_buffer.flush()
+        return self.get_results([X_SCRIPT] + self.options + self.filenames,
+                                input_buffer)
         
     def get_posttest_result(self):
         if not self.posttest:
@@ -139,9 +148,9 @@ class ExtractorTest(object):
     
     def have_error_mismatch(self, status):
         if self.error and (status == 0):
-            return "x did not return expected error"
+            return "dtrx did not return expected error"
         elif (not self.error) and (status != 0):
-            return "x returned error code %s" % (status,)
+            return "dtrx returned error code %s" % (status,)
         return None
 
     def grep_output(self, output):
@@ -210,4 +219,5 @@ for outcome in OUTCOMES:
 for result in results:
     counts[result] += 1
 print " Totals:", ', '.join(["%s %s" % (counts[key], key) for key in OUTCOMES])
+input_buffer.close()
 output_buffer.close()

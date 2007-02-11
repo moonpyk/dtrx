@@ -26,6 +26,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import textwrap
 
 from cStringIO import StringIO
 
@@ -48,6 +49,10 @@ MATCHING_DIRECTORY = 1
 BOMB = 3
 EMPTY = 4
 COMPRESSED = 5
+
+EXTRACT_HERE = 1
+EXTRACT_WRAP = 2
+EXTRACT_RENAME = 3
 
 mimetypes.encodings_map.setdefault('.bz2', 'bzip2')
 mimetypes.types_map['.exe'] = 'application/x-msdos-program'
@@ -378,16 +383,23 @@ class OverwriteHandler(BaseHandler):
 
 class MatchHandler(BaseHandler):
     def can_handle(contents, options):
-        return contents == MATCHING_DIRECTORY
+        return ((contents == MATCHING_DIRECTORY) or
+                (hasattr(contents, 'encode') and
+                 (options.onedir_policy in (EXTRACT_RENAME, EXTRACT_HERE))))
     can_handle = staticmethod(can_handle)
 
     def extract(self):
-        basename = self.extractor.basename()
-        self.target = tempfile.mkdtemp(dir='.')
+        if self.contents == MATCHING_DIRECTORY:
+            basename = destination = self.extractor.basename()
+        elif self.options.onedir_policy == EXTRACT_HERE:
+            basename = destination = self.contents.rstrip('/')
+        else:
+            basename = self.contents.rstrip('/')
+            destination = self.extractor.basename()
+        self.target = tempdir = tempfile.mkdtemp(dir='.')
         result = BaseHandler.extract(self)
         if result is None:
-            tempdir = self.target
-            checker = self.extractor.name_checker(basename)
+            checker = self.extractor.name_checker(destination)
             self.target = checker.check()
             os.rename(os.path.join(tempdir, basename), self.target)
             os.rmdir(tempdir)
@@ -427,6 +439,9 @@ handlers = [FlatHandler, OverwriteHandler, MatchHandler, EmptyHandler,
             BombHandler]
 
 class ExtractorApplication(object):
+    policy_answers = {'h': EXTRACT_HERE, 'i': EXTRACT_WRAP,
+                      'r': EXTRACT_RENAME, '': EXTRACT_WRAP}
+
     def __init__(self, arguments):
         self.parse_options(arguments)
         self.setup_logger()
@@ -457,10 +472,11 @@ class ExtractorApplication(object):
         parser.add_option('-l', '-t', '--list', '--table', dest='show_list',
                           action='store_true', default=False,
                           help="list contents of archives on standard output")
-##         parser.add_option('-n', '--noninteractive', dest='batch',
-##                           action='store_true', default=False,
-##                           help="don't ask how to handle special cases")
+        parser.add_option('-n', '--noninteractive', dest='batch',
+                          action='store_true', default=False,
+                          help="don't ask how to handle special cases")
         self.options, filenames = parser.parse_args(arguments)
+        self.options.onedir_policy = self.policy_answers['']
         if not filenames:
             parser.error("you did not list any archives")
         self.archives = {os.path.realpath(os.curdir): filenames}
@@ -474,6 +490,18 @@ class ExtractorApplication(object):
         handler.setFormatter(formatter)
         self.logger.addHandler(handler)
 
+    def ask_question(self, question, answers):
+        if self.options.batch:
+            return answers['']
+        last_line = question.pop()
+        while True:
+            print "\n".join(question)
+            answer = raw_input(last_line)
+            try:
+                return answers[answer.lower()]
+            except KeyError:
+                print
+
     def get_extractor(self):
         mimetype, encoding = mimetypes.guess_type(self.current_filename)
         try:
@@ -481,13 +509,28 @@ class ExtractorApplication(object):
         except KeyError:
             if encoding:
                 extractor = CompressionExtractor
-                contents = COMPRESSED
             else:
                 return "not a known archive type"
         try:
             self.current_extractor = extractor(self.current_filename, mimetype,
                                                encoding)
+        except ExtractorError, error:
+            return str(error)
+
+    def get_handler(self):
+        try:
             content = self.current_extractor.check_contents()
+            if hasattr(content, 'encode'):  # Archive contains one directory.
+                question = textwrap.wrap("%s contains one directory: %s.  %s" %
+                                         (self.current_filename, content,
+                                          "You can:"))
+                question.extend(["You can:",
+                                 " * extract it Inside another directory",
+                                 " * extract it and Rename the directory",
+                                 " * extract it Here",
+                                 "What do you want to do?  (I/r/h) "])
+                self.options.onedir_policy = \
+                    self.ask_question(question, self.policy_answers)
             for handler in handlers:
                 if handler.can_handle(content, self.options):
                     self.current_handler = handler(self.current_extractor,
@@ -527,7 +570,8 @@ class ExtractorApplication(object):
             for filename in filenames:
                 os.chdir(self.current_directory)
                 self.current_filename = filename
-                success = self.report(self.get_extractor)
+                success = (self.report(self.get_extractor) and
+                           self.report(self.get_handler))
                 if success:
                     for name in 'extract', 'cleanup':
                         success = (self.report(getattr(self.current_handler,

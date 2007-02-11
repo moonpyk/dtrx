@@ -35,7 +35,7 @@
 
 - name: recursion and permissions
   filenames: test-recursive-badperms.tar.bz2
-  options: -r
+  options: -n -r
   baseline: |
     mkdir test-recursive-badperms
     cd test-recursive-badperms
@@ -57,14 +57,14 @@
 - name: decompression with -r
   directory: inside-dir
   filenames: ../test-text.gz
-  options: -r
+  options: -n -r
   baseline: |
     zcat $1 >test-text
 
 - name: decompression with -fr
   directory: inside-dir
   filenames: ../test-text.gz
-  options: -fr
+  options: -n -fr
   baseline: |
     zcat $1 >test-text
 
@@ -79,7 +79,7 @@
 
 - name: overwrite option
   filenames: test-1.23.tar.bz2
-  options: -o
+  options: -n -o
   baseline: |
     mkdir test-1.23
     cd test-1.23
@@ -90,14 +90,14 @@
 - name: flat option
   directory: inside-dir
   filenames: ../test-1.23.tar.bz2
-  options: -f
+  options: -n -f
   baseline: |
     tar -jxf $1
 
 - name: flat recursion and permissions
   directory: inside-dir
   filenames: ../test-recursive-badperms.tar.bz2
-  options: -fr
+  options: -n -fr
   baseline: |
     tar -jxf $1
     tar -xf test-badperms.tar
@@ -118,12 +118,12 @@
   filenames: tests.yml
 
 - name: bad options
-  options: --nonexistent-option
+  options: -n --nonexistent-option
   filenames: test-1.23.tar
   error: true
 
 - name: --version
-  options: --version
+  options: -n --version
   grep: ersion \d+\.\d+
   filenames: test-1.23.tar
   baseline: |
@@ -137,7 +137,7 @@
 
 - name: silence
   filenames: tests.yml
-  options: -qq
+  options: -n -qq
   error: true
   antigrep: .
 
@@ -151,7 +151,7 @@
     chmod 500 .
 
 - name: list contents of one file
-  options: -l
+  options: -n -l
   filenames: test-1.23.tar
   output: |
     test-1.23/
@@ -163,7 +163,7 @@
     test-1.23/foobar
 
 - name: list contents of multiple files
-  options: --table
+  options: -n --table
   filenames: test-1.23_all.deb test-1.23.zip
   output: |
     test-1.23_all.deb:
@@ -180,6 +180,38 @@
     foobar
 
 - name: list contents of compressed file
-  options: -t
+  options: -n -t
   filenames: test-text.gz
   output: test-text
+
+- name: default behavior with one directory
+  options: -n
+  filenames: test-onedir.tar.gz
+  baseline: |
+    mkdir test-onedir
+    cd test-onedir
+    tar -zxf ../$1
+
+- name: one directory extracted inside another
+  options: ""
+  filenames: test-onedir.tar.gz
+  input: i
+  baseline: |
+    mkdir test-onedir
+    cd test-onedir
+    tar -zxf ../$1
+
+- name: one directory extracted with rename
+  options: ""
+  filenames: test-onedir.tar.gz
+  input: r
+  baseline: |
+    tar -zxf $1
+    mv test test-onedir
+
+- name: one directory extracted here
+  options: ""
+  filenames: test-onedir.tar.gz
+  input: h
+  baseline: |
+    tar -zxf $1
