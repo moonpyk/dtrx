@@ -48,11 +48,17 @@
     if [ "x`cat test-recursive-badperms/test-badperms/testdir/testfile`" = \
          "xhey" ]; then exit 0; else exit 1; fi
 
-- name: decompression
+- name: decompressing gz
   directory: inside-dir
   filenames: ../test-text.gz
   baseline: |
     zcat $1 >test-text
+
+- name: decompressing bz2
+  directory: inside-dir
+  filenames: ../test-text.bz2
+  baseline: |
+    bzcat $1 >test-text
 
 - name: decompression with -r
   directory: inside-dir
@@ -184,7 +190,7 @@
   filenames: test-text.gz
   output: test-text
 
-- name: default behavior with one directory
+- name: default behavior with one directory (gz)
   options: -n
   filenames: test-onedir.tar.gz
   baseline: |
@@ -192,7 +198,7 @@
     cd test-onedir
     tar -zxf ../$1
 
-- name: one directory extracted inside another
+- name: one directory extracted inside another (gz)
   options: ""
   filenames: test-onedir.tar.gz
   input: i
@@ -201,7 +207,7 @@
     cd test-onedir
     tar -zxf ../$1
 
-- name: one directory extracted with rename
+- name: one directory extracted with rename (gz)
   options: ""
   filenames: test-onedir.tar.gz
   input: r
@@ -209,7 +215,39 @@
     tar -zxf $1
     mv test test-onedir
 
-- name: one directory extracted here
+- name: one directory extracted here (gz)
+  options: ""
+  filenames: test-onedir.tar.gz
+  input: h
+  baseline: |
+    tar -zxf $1
+
+- name: default behavior with one directory (bz2)
+  options: -n
+  filenames: test-onedir.tar.gz
+  baseline: |
+    mkdir test-onedir
+    cd test-onedir
+    tar -zxf ../$1
+
+- name: one directory extracted inside another (bz2)
+  options: ""
+  filenames: test-onedir.tar.gz
+  input: i
+  baseline: |
+    mkdir test-onedir
+    cd test-onedir
+    tar -zxf ../$1
+
+- name: one directory extracted with rename (bz2)
+  options: ""
+  filenames: test-onedir.tar.gz
+  input: r
+  baseline: |
+    tar -zxf $1
+    mv test test-onedir
+
+- name: one directory extracted here (bz2)
   options: ""
   filenames: test-onedir.tar.gz
   input: h
