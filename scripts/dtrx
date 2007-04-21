@@ -45,10 +45,10 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General
 Public License for more details.""" % (VERSION,)
 
 MATCHING_DIRECTORY = 1
-# ONE_DIRECTORY = 2
+ONE_ENTRY = 2
 BOMB = 3
 EMPTY = 4
-COMPRESSED = 5
+ONE_ENTRY_KNOWN = 5
 
 EXTRACT_HERE = 1
 EXTRACT_WRAP = 2
@@ -171,28 +171,53 @@ class BaseExtractor(object):
     def prepare(self):
         pass
 
-    def check_contents(self):
-        archive_type = None
-        filenames = self.get_filenames()
+    def check_included_archive(self, filename):
+        if extractor_map.has_key(mimetypes.guess_type(filename)[0]):
+            self.included_archives.append(filename)
+
+    def check_first_filename(self, filenames):
         try:
-            filename = filenames.next()
-            if extractor_map.has_key(mimetypes.guess_type(filename)[0]):
-                self.included_archives.append(filename)
-            first_part = filename.split('/', 1)[0] + '/'
+            first_filename = filenames.next()
         except StopIteration:
             filenames.stop()
-            return EMPTY
+            return (None, None)
+        self.check_included_archive(first_filename)
+        parts = first_filename.split('/')
+        first_part = [parts[0]]
+        if parts[0] == '.':
+            first_part.append(parts[1])
+        return (first_filename, '/'.join(first_part + ['']))
+
+    def check_second_filename(self, filenames, first_part, first_filename):
+        try:
+            filename = filenames.next()
+        except StopIteration:
+            return ONE_ENTRY, first_filename
+        self.check_included_archive(filename)
+        if not filename.startswith(first_part):
+            return BOMB, None
+        return None, first_part
+        
+    def check_contents(self):
+        filenames = self.get_filenames()
+        first_filename, first_part = self.check_first_filename(filenames)
+        if first_filename is None:
+            return (EMPTY, None)
+        archive_type, type_info = self.check_second_filename(filenames,
+                                                             first_part,
+                                                             first_filename)
         for filename in filenames:
-            if extractor_map.has_key(mimetypes.guess_type(filename)[0]):
-                self.included_archives.append(filename)
-            if (archive_type is None) and (not filename.startswith(first_part)):
+            self.check_included_archive(filename)
+            if (archive_type != BOMB) and (not filename.startswith(first_part)):
                 archive_type = BOMB
+                type_info = None
         filenames.stop()
-        if archive_type:
-            return archive_type
-        if self.basename() == first_part[:-1]:
-            return MATCHING_DIRECTORY
-        return first_part
+        if archive_type is None:
+            if self.basename() == first_part[:-1]:
+                archive_type = MATCHING_DIRECTORY
+            else:
+                archive_type = ONE_ENTRY
+        return archive_type, type_info
 
     def basename(self):
         pieces = os.path.basename(self.filename).split('.')
@@ -270,7 +295,7 @@ class RPMExtractor(CpioExtractor):
 
     def check_contents(self):
         CpioExtractor.check_contents(self)
-        return BOMB
+        return (BOMB, None)
 
 
 class DebExtractor(TarExtractor):
@@ -291,7 +316,7 @@ class DebExtractor(TarExtractor):
 
     def check_contents(self):
         TarExtractor.check_contents(self)
-        return BOMB
+        return (BOMB, None)
         
 
 class CompressionExtractor(BaseExtractor):
@@ -308,19 +333,21 @@ class CompressionExtractor(BaseExtractor):
         yield self.basename()
 
     def check_contents(self):
-        return COMPRESSED
+        return (ONE_ENTRY_KNOWN, self.basename())
 
     def extract(self, path):
         output = open(path, 'w')
+        self.archive.seek(0, 0)
         self.run(['cat'], "output write", stdin=self.archive, stdout=output)
         output.close()
         
 
 class BaseHandler(object):
-    def __init__(self, extractor, contents, options):
+    def __init__(self, extractor, contents, content_name, options):
         self.logger = logging.getLogger('dtrx-log')
         self.extractor = extractor
         self.contents = contents
+        self.content_name = content_name
         self.options = options
         self.target = None
 
@@ -353,12 +380,12 @@ class BaseHandler(object):
 
 class FlatHandler(BaseHandler):
     def can_handle(contents, options):
-        return ((options.flat and (contents != COMPRESSED)) or
+        return ((options.flat and (contents != ONE_ENTRY_KNOWN)) or
                 (options.overwrite and (contents == MATCHING_DIRECTORY)))
     can_handle = staticmethod(can_handle)
 
-    def __init__(self, extractor, contents, options):
-        BaseHandler.__init__(self, extractor, contents, options)
+    def __init__(self, extractor, contents, content_name, options):
+        BaseHandler.__init__(self, extractor, contents, content_name, options)
         self.target = '.'
 
     def cleanup(self):
@@ -372,19 +399,19 @@ class FlatHandler(BaseHandler):
 
 class OverwriteHandler(BaseHandler):
     def can_handle(contents, options):
-        return ((options.flat and (contents == COMPRESSED)) or
+        return ((options.flat and (contents == ONE_ENTRY_KNOWN)) or
                 (options.overwrite and (contents != MATCHING_DIRECTORY)))
     can_handle = staticmethod(can_handle)
 
-    def __init__(self, extractor, contents, options):
-        BaseHandler.__init__(self, extractor, contents, options)
+    def __init__(self, extractor, contents, content_name, options):
+        BaseHandler.__init__(self, extractor, contents, content_name, options)
         self.target = self.extractor.basename()
         
 
 class MatchHandler(BaseHandler):
     def can_handle(contents, options):
         return ((contents == MATCHING_DIRECTORY) or
-                (hasattr(contents, 'encode') and
+                ((contents == ONE_ENTRY) and
                  (options.onedir_policy in (EXTRACT_RENAME, EXTRACT_HERE))))
     can_handle = staticmethod(can_handle)
 
@@ -392,9 +419,9 @@ class MatchHandler(BaseHandler):
         if self.contents == MATCHING_DIRECTORY:
             basename = destination = self.extractor.basename()
         elif self.options.onedir_policy == EXTRACT_HERE:
-            basename = destination = self.contents.rstrip('/')
+            basename = destination = self.content_name.rstrip('/')
         else:
-            basename = self.contents.rstrip('/')
+            basename = self.content_name.rstrip('/')
             destination = self.extractor.basename()
         self.target = tempdir = tempfile.mkdtemp(dir='.')
         result = BaseHandler.extract(self)
@@ -411,7 +438,7 @@ class EmptyHandler(object):
         return contents == EMPTY
     can_handle = staticmethod(can_handle)
 
-    def __init__(self, extractor, contents, options): pass
+    def __init__(self, extractor, contents, content_name, options): pass
     def extract(self): pass
     def cleanup(self): pass
 
@@ -421,8 +448,8 @@ class BombHandler(BaseHandler):
         return True
     can_handle = staticmethod(can_handle)
 
-    def __init__(self, extractor, contents, options):
-        BaseHandler.__init__(self, extractor, contents, options)
+    def __init__(self, extractor, contents, content_name, options):
+        BaseHandler.__init__(self, extractor, contents, content_name, options)
         checker = self.extractor.name_checker(self.extractor.basename())
         self.target = checker.check()
 
@@ -496,7 +523,10 @@ class ExtractorApplication(object):
         last_line = question.pop()
         while True:
             print "\n".join(question)
-            answer = raw_input(last_line)
+            try:
+                answer = raw_input(last_line)
+            except EOFError:
+                return answers['']
             try:
                 return answers[answer.lower()]
             except KeyError:
@@ -519,11 +549,10 @@ class ExtractorApplication(object):
 
     def get_handler(self):
         try:
-            content = self.current_extractor.check_contents()
-            if hasattr(content, 'encode'):  # Archive contains one directory.
-                question = textwrap.wrap("%s contains one directory: %s.  %s" %
-                                         (self.current_filename, content,
-                                          "You can:"))
+            content, content_name = self.current_extractor.check_contents()
+            if content == ONE_ENTRY:
+                question = textwrap.wrap("%s contains one entry: %s." %
+                                         (self.current_filename, content_name))
                 question.extend(["You can:",
                                  " * extract it Inside another directory",
                                  " * extract it and Rename the directory",
@@ -534,7 +563,8 @@ class ExtractorApplication(object):
             for handler in handlers:
                 if handler.can_handle(content, self.options):
                     self.current_handler = handler(self.current_extractor,
-                                                   content, self.options)
+                                                   content, content_name,
+                                                   self.options)
                     break
         except ExtractorError, error:
             return str(error)

@@ -53,12 +53,16 @@
   filenames: ../test-text.gz
   baseline: |
     zcat $1 >test-text
+  posttest: |
+    if [ "x`cat test-text`" != "xhi" ]; then exit 1; fi
 
 - name: decompressing bz2
   directory: inside-dir
   filenames: ../test-text.bz2
   baseline: |
     bzcat $1 >test-text
+  posttest: |
+    if [ "x`cat test-text`" != "xhi" ]; then exit 1; fi
 
 - name: decompression with -r
   directory: inside-dir
@@ -107,7 +111,7 @@
   baseline: |
     tar -jxf $1
     tar -xf test-badperms.tar
-    chmod 755 testdir
+    chmod 700 testdir
   posttest: |
     if [ "x`cat testdir/testfile`" != "xhey" ]; then exit 1; fi
 
@@ -250,6 +254,23 @@
 - name: one directory extracted here (bz2)
   options: ""
   filenames: test-onedir.tar.gz
+  input: h
+  baseline: |
+    tar -zxf $1
+
+- name: bomb with preceding dot in the table
+  filenames: test-dot-first-bomb.tar.gz
+  options: ""
+  antigrep: one entry
+  baseline: |
+    mkdir test-dot-first-bomb
+    cd test-dot-first-bomb
+    tar -zxf ../$1
+
+- name: one directory preceded by dot in the table
+  filenames: test-dot-first-onedir.tar.gz
+  options: ""
+  grep: "one entry: ./dir"
   input: h
   baseline: |
     tar -zxf $1
