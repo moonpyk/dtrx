@@ -43,7 +43,7 @@
     mkdir test-badperms
     cd test-badperms
     tar -xf ../test-badperms.tar
-    chmod 755 testdir
+    chmod 700 testdir
   posttest: |
     if [ "x`cat test-recursive-badperms/test-badperms/testdir/testfile`" = \
          "xhey" ]; then exit 0; else exit 1; fi
@@ -274,3 +274,73 @@
   input: h
   baseline: |
     tar -zxf $1
+
+- name: two one-item archives with different answers
+  filenames: test-onedir.tar.gz test-onedir.tar.gz
+  options: ""
+  input: |
+    h
+    r
+  baseline: |
+    tar -zxf $1
+    mv test test-onedir
+    tar -zxf $1
+
+- name: interactive recursion (always)
+  filenames: test-recursive-badperms.tar.bz2 test-recursive-badperms.tar.bz2
+  options: ""
+  input: |
+    i
+    a
+    i
+  baseline: |
+    extract() {
+      mkdir test-recursive-badperms$2
+      cd test-recursive-badperms$2
+      tar -jxf ../$1
+      mkdir test-badperms
+      cd test-badperms
+      tar -xf ../test-badperms.tar
+      chmod 700 testdir
+      cd ../..
+    }
+    extract $1
+    extract $1 .1
+
+- name: interactive recursion (once)
+  filenames: test-recursive-badperms.tar.bz2 test-recursive-badperms.tar.bz2
+  options: ""
+  input: |
+    i
+    o
+    i
+    n
+  baseline: |
+    mkdir test-recursive-badperms
+    cd test-recursive-badperms
+    tar -jxf ../$1
+    mkdir test-badperms
+    cd test-badperms
+    tar -xf ../test-badperms.tar
+    chmod 700 testdir
+    cd ../..
+    mkdir test-recursive-badperms.1
+    cd test-recursive-badperms.1
+    tar -jxf ../$1
+
+- name: interactive recursion (never)
+  filenames: test-recursive-badperms.tar.bz2 test-recursive-badperms.tar.bz2
+  options: ""
+  input: |
+    i
+    v
+    i
+  baseline: |
+    extract() {
+      mkdir test-recursive-badperms$2
+      cd test-recursive-badperms$2
+      tar -jxf ../$1
+      cd ..
+    }
+    extract $1
+    extract $1 .1

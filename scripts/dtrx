@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #
 # dtrx -- Intelligently extract various archive types.
-# Copyright (c) 2006 Brett Smith <brettcsmith@brettcsmith.org>.
+# Copyright (c) 2006, 2007 Brett Smith <brettcsmith@brettcsmith.org>.
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -32,7 +32,7 @@ from cStringIO import StringIO
 
 VERSION = "4.0"
 VERSION_BANNER = """dtrx version %s
-Copyright (c) 2006 Brett Smith <brettcsmith@brettcsmith.org>
+Copyright (c) 2006, 2007 Brett Smith <brettcsmith@brettcsmith.org>
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the
@@ -53,6 +53,11 @@ ONE_ENTRY_KNOWN = 5
 EXTRACT_HERE = 1
 EXTRACT_WRAP = 2
 EXTRACT_RENAME = 3
+
+RECURSE_ALWAYS = 1
+RECURSE_ONCE = 2
+RECURSE_NOT_NOW = 3
+RECURSE_NEVER = 4
 
 mimetypes.encodings_map.setdefault('.bz2', 'bzip2')
 mimetypes.types_map['.exe'] = 'application/x-msdos-program'
@@ -468,6 +473,9 @@ handlers = [FlatHandler, OverwriteHandler, MatchHandler, EmptyHandler,
 class ExtractorApplication(object):
     policy_answers = {'h': EXTRACT_HERE, 'i': EXTRACT_WRAP,
                       'r': EXTRACT_RENAME, '': EXTRACT_WRAP}
+    recursive_answers = {'o': RECURSE_ONCE, 'a': RECURSE_ALWAYS,
+                         'n': RECURSE_NOT_NOW, 'v': RECURSE_NEVER,
+                         '': RECURSE_NOT_NOW}
 
     def __init__(self, arguments):
         self.parse_options(arguments)
@@ -503,7 +511,6 @@ class ExtractorApplication(object):
                           action='store_true', default=False,
                           help="don't ask how to handle special cases")
         self.options, filenames = parser.parse_args(arguments)
-        self.options.onedir_policy = self.policy_answers['']
         if not filenames:
             parser.error("you did not list any archives")
         self.archives = {os.path.realpath(os.curdir): filenames}
@@ -550,7 +557,7 @@ class ExtractorApplication(object):
     def get_handler(self):
         try:
             content, content_name = self.current_extractor.check_contents()
-            if content == ONE_ENTRY:
+            if (content == ONE_ENTRY) and (self.options.onedir_policy is None):
                 question = textwrap.wrap("%s contains one entry: %s." %
                                          (self.current_filename, content_name))
                 question.extend(["You can:",
@@ -569,8 +576,34 @@ class ExtractorApplication(object):
         except ExtractorError, error:
             return str(error)
 
+    def get_recursion_policy(self):
+        if len(self.current_extractor.included_archives) > 1:
+            question = ("%s contains %s other archive files." %
+                        (self.current_filename,
+                         len(self.current_extractor.included_archives)))
+        else:
+            question = ("%s contains another archive: %s." %
+                        (self.current_filename,
+                         self.current_extractor.included_archives[0]))
+        question = textwrap.wrap(question)
+        question.extend(["You can:",
+                         " * Always extract included archives",
+                         " * extract included archives this Once",
+                         " * choose Not to extract included archives",
+                         " * neVer extract included archives",
+                         "What do you want to do?  (a/o/N/v) "])
+        self.options.recurse_policy = self.ask_question(question,
+                                                        self.recursive_answers)
+
     def recurse(self):
-        if not self.options.recursive:
+        if not self.current_extractor.included_archives:
+            return
+        if self.options.recurse_policy is None:
+            if self.options.recursive:
+                self.options.recurse_policy = RECURSE_ALWAYS
+            else:
+                self.get_recursion_policy()
+        if self.options.recurse_policy in (RECURSE_NOT_NOW, RECURSE_NEVER):
             return
         for filename in self.current_extractor.included_archives:
             tail_path, basename = os.path.split(filename)
@@ -595,9 +628,17 @@ class ExtractorApplication(object):
             self.failures.append(self.current_filename)
 
     def extract(self):
+        self.options.recurse_policy = None
+        first_run = True
         while self.archives:
             self.current_directory, filenames = self.archives.popitem()
+            self.options.onedir_policy = EXTRACT_WRAP
             for filename in filenames:
+                if first_run:
+                    self.options.onedir_policy = None
+                if self.options.recurse_policy not in (RECURSE_ALWAYS,
+                                                       RECURSE_NEVER):
+                    self.options.recurse_policy = None
                 os.chdir(self.current_directory)
                 self.current_filename = filename
                 success = (self.report(self.get_extractor) and
@@ -608,6 +649,7 @@ class ExtractorApplication(object):
                                                        name)) and success)
                     self.recurse()
                 self.record_status(success)
+            first_run = False
 
     def show_contents(self):
         for filename in self.current_extractor.get_filenames():
