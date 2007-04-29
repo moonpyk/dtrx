@@ -655,12 +655,7 @@ class ExtractorApplication(object):
             self.failures.append(self.current_filename)
 
     def extract(self):
-        first_run = True
         while self.archives:
-            if not first_run:
-                self.options.one_entry_policy.permanent_policy = EXTRACT_WRAP
-            else:
-                first_run = False
             self.current_directory, filenames = self.archives.popitem()
             for filename in filenames:
                 os.chdir(self.current_directory)
@@ -673,6 +668,7 @@ class ExtractorApplication(object):
                                                        name)) and success)
                     self.recurse()
                 self.record_status(success)
+            self.options.one_entry_policy.permanent_policy = EXTRACT_WRAP
 
     def show_contents(self):
         for filename in self.current_extractor.get_filenames():
