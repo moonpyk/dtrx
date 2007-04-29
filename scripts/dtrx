@@ -462,6 +462,10 @@ class BombHandler(BaseHandler):
 class BasePolicy(object):
     def __init__(self, options):
         self.current_policy = None
+        if options.batch:
+            self.permanent_policy = self.answers['']
+        else:
+            self.permanent_policy = None
 
     def ask_question(self, question):
         question = textwrap.wrap(question) + self.choices
@@ -476,10 +480,6 @@ class BasePolicy(object):
             except KeyError:
                 print
 
-    def prep(self, *args):
-        self.current_policy = (self.permanent_policy or
-                               self.ask_question(*args))
-
     def __cmp__(self, other):
         return cmp(self.current_policy, other)
     
@@ -493,16 +493,11 @@ class OneEntryPolicy(BasePolicy):
                " * extract it Here"]
     prompt = "What do you want to do?  (I/r/h) "
 
-    def __init__(self, options):
-        BasePolicy.__init__(self, options)
-        if options.batch:
-            self.permanent_policy = self.answers['']
-        else:
-            self.permanent_policy = None
-
-    def ask_question(self, archive_filename, entry_name):
-        return BasePolicy.ask_question(self, ("%s contains one entry: %s." %
-                                              (archive_filename, entry_name)))
+    def prep(self, archive_filename, entry_name):
+        question = ("%s contains one entry: %s." %
+                    (archive_filename, entry_name))
+        self.current_policy = (self.permanent_policy or
+                               self.ask_question(question))
 
     def ok_for_match(self):
         return self.current_policy in (EXTRACT_RENAME, EXTRACT_HERE)
@@ -522,10 +517,6 @@ class RecursionPolicy(BasePolicy):
         BasePolicy.__init__(self, options)
         if options.recursive:
             self.permanent_policy = RECURSE_ALWAYS
-        elif options.batch:
-            self.permanent_policy = self.answers['']
-        else:
-            self.permanent_policy = None
 
     def prep(self, current_filename, included_archives):
         archive_count = len(included_archives)
