@@ -1,5 +1,5 @@
 Things which I have a use case/anti-use case for:
-* Prompt the user to recurse.
+* Some better way of dealing with options/policies.
 * Use file to detect the archive type.
 * Support lzma compression (http://tukaani.org/lzma/download)
 * Support pisi packages (http://paketler.pardus.org.tr/pardus-2007/)

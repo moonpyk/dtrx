@@ -40,6 +40,11 @@ dtrx supports a number of options to mandate specific behavior:
    files which all need to be extracted into the same directory structure.
    Note that existing files may be overwritten with this option.
 
+-n, --noninteractive
+   dtrx will normally ask the user how to handle certain corner cases, such
+   as how to handle an archive that only contains one file.  This option
+   suppresses those questions; dtrx will instead use sane defaults.
+
 -l, -t, --list, --table
    Don't extract the archives; just list their contents on standard output.
 
