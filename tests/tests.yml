@@ -270,7 +270,7 @@
 - name: one directory preceded by dot in the table
   filenames: test-dot-first-onedir.tar.gz
   options: ""
-  grep: "one entry: ./dir"
+  grep: "one entry: (./)?dir/"
   input: h
   baseline: |
     tar -zxf $1
