@@ -55,7 +55,7 @@ class ExtractorTest(object):
         setattr(self, 'options', kwargs.get('options', '-n').split())
         setattr(self, 'filenames', kwargs.get('filenames', '').split())
         for key in ('directory', 'prerun', 'posttest', 'baseline', 'error',
-                    'grep', 'antigrep', 'input', 'output'):
+                    'grep', 'antigrep', 'input', 'output', 'cleanup'):
             setattr(self, key, kwargs.get(key, None))
         
     def get_results(self, commands, stdin=None):
@@ -102,6 +102,9 @@ class ExtractorTest(object):
         return subprocess.call(['sh', TESTSCRIPT_NAME])
 
     def clean(self):
+        if self.cleanup is not None:
+            self.write_script(self.cleanup)
+            subprocess.call(['sh', TESTSCRIPT_NAME])
         if self.directory:
             target = os.path.join(ROOT_DIR, self.directory)
             extra_options = ['!', '-name', TESTSCRIPT_NAME]

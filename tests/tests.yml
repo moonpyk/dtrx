@@ -25,13 +25,33 @@
 - name: basic .deb
   filenames: test-1.23_all.deb
   baseline: |
-    TD=$PWD
     mkdir test-1.23
-    cd /tmp
-    ar x $TD/$1 data.tar.gz
-    cd $TD/test-1.23
-    tar -zxf /tmp/data.tar.gz
-    rm /tmp/data.tar.gz
+    cd test-1.23
+    ar p ../$1 data.tar.gz | tar -zx
+
+- name: basic .gem
+  filenames: test-1.23.gem
+  baseline: |
+    mkdir test-1.23
+    cd test-1.23
+    tar -xOf ../$1 data.tar.gz | tar -zx
+
+- name: .deb metadata
+  filenames: test-1.23_all.deb
+  options: --metadata
+  baseline: |
+    mkdir test-1.23
+    cd test-1.23
+    ar p ../$1 control.tar.gz | tar -zx
+    
+- name: .gem metadata
+  filenames: test-1.23.gem
+  options: -m
+  baseline: |
+    tar -xOf $1 metadata.gz | zcat > test-1.23.gem-metadata.txt
+  cleanup: rm -f test-1.23.gem-metadata.txt
+  posttest: |
+    if [ "x`cat test-1.23.gem-metadata.txt`" != "xhi" ]; then exit 1; fi
 
 - name: recursion and permissions
   filenames: test-recursive-badperms.tar.bz2
@@ -45,8 +65,8 @@
     tar -xf ../test-badperms.tar
     chmod 700 testdir
   posttest: |
-    if [ "x`cat test-recursive-badperms/test-badperms/testdir/testfile`" = \
-         "xhey" ]; then exit 0; else exit 1; fi
+    if [ "x`cat test-recursive-badperms/test-badperms/testdir/testfile`" != \
+         "xhey" ]; then exit 1; fi
 
 - name: decompressing gz
   directory: inside-dir

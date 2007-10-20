@@ -224,6 +224,27 @@ class BaseExtractor(object):
             yield line.rstrip('\n')
     
 
+class CompressionExtractor(BaseExtractor):
+    name_checker = FilenameChecker
+
+    def basename(self):
+        pieces = os.path.basename(self.filename).split('.')
+        extension = '.' + pieces[-1]
+        if mimetypes.encodings_map.has_key(extension):
+            pieces.pop()
+        return '.'.join(pieces)
+
+    def get_filenames(self):
+        yield self.basename()
+
+    def extract(self):
+        self.content_type = ONE_ENTRY_KNOWN
+        self.content_name = self.basename()
+        output_fd, self.target = tempfile.mkstemp(prefix='.dtrx-', dir='.')
+        self.run_pipes(output_fd)
+        os.close(output_fd)
+        
+
 class TarExtractor(BaseExtractor):
     def get_filenames(self):
         self.pipe(['tar', '-t'], "listing")
@@ -301,26 +322,31 @@ class DebExtractor(TarExtractor):
         self.content_type = BOMB
 
 
-class CompressionExtractor(BaseExtractor):
-    name_checker = FilenameChecker
+class DebMetadataExtractor(DebExtractor):
+    def prepare(self):
+        self.pipe(['ar', 'p', self.filename, 'control.tar.gz'],
+                  "control.tar.gz extraction")
+        self.pipe(['zcat'], "control.tar.gz decompression")
+
+
+class GemExtractor(TarExtractor):
+    def prepare(self):
+        self.pipe(['tar', '-xO', 'data.tar.gz'], "data.tar.gz extraction")
+        self.pipe(['zcat'], "data.tar.gz decompression")
+
+    def check_contents(self):
+        self.check_included_archives(os.listdir('.'))
+        self.content_type = BOMB
+
+
+class GemMetadataExtractor(CompressionExtractor):
+    def prepare(self):
+        self.pipe(['tar', '-xO', 'metadata.gz'], "metadata.gz extraction")
+        self.pipe(['zcat'], "metadata.gz decompression")
 
     def basename(self):
-        pieces = os.path.basename(self.filename).split('.')
-        extension = '.' + pieces[-1]
-        if mimetypes.encodings_map.has_key(extension):
-            pieces.pop()
-        return '.'.join(pieces)
+        return os.path.basename(self.filename) + '-metadata.txt'
 
-    def get_filenames(self):
-        yield self.basename()
-
-    def extract(self):
-        self.content_type = ONE_ENTRY_KNOWN
-        self.content_name = self.basename()
-        output_fd, self.target = tempfile.mkstemp(prefix='.dtrx-', dir='.')
-        self.run_pipes(output_fd)
-        os.close(output_fd)
-        
 
 class BaseHandler(object):
     def __init__(self, extractor, options):
@@ -515,10 +541,49 @@ extractor_map = {'application/x-tar': TarExtractor,
                  'application/x-debian-package': DebExtractor,
                  'application/x-redhat-package-manager': RPMExtractor,
                  'application/x-rpm': RPMExtractor,
-                 'application/x-cpio': CpioExtractor}
+                 'application/x-cpio': CpioExtractor,
+                 'application/x-ruby-gem': GemExtractor}
 
 handlers = [FlatHandler, OverwriteHandler, MatchHandler, EmptyHandler,
             BombHandler]
+
+class ExtractorBuilder(object):
+    extractor_map = {}
+    for args in ((TarExtractor, None, 'x-tar'),
+                 (ZipExtractor, None, 'zip', 'x-msdos-program'),
+                 (DebExtractor, DebMetadataExtractor, 'x-debian-package'),
+                 (RPMExtractor, None, 'x-redhat-package-manager', 'x-rpm'),
+                 (CpioExtractor, None, 'x-cpio'),
+                 (GemExtractor, GemMetadataExtractor, 'x-ruby-gem')):
+        for entry in args[2:]:
+            if '/' not in entry:
+                entry = 'application/' + entry
+            extractor_map[entry] = args[0:2]
+
+    def __init__(self, filename, options):
+        self.filename = filename
+        self.options = options
+        self.mimetype, self.encoding = mimetypes.guess_type(self.filename)
+
+    def get_extractor(self):
+        extractor = self.find_extractor()
+        if extractor is None:
+            raise ExtractorError("not a known archive type")
+        return extractor(self.filename, self.encoding)
+
+    def find_extractor(self):
+        extractor = None
+        try:
+            extractors = self.extractor_map[self.mimetype]
+            if self.options.metadata and (extractors[1] is not None):
+                extractor = extractors[1]
+            else:
+                extractor = extractors[0]
+        except KeyError:
+            if self.encoding:
+                extractor = CompressionExtractor
+        return extractor
+
 
 class ExtractorApplication(object):
     def __init__(self, arguments):
@@ -554,6 +619,9 @@ class ExtractorApplication(object):
         parser.add_option('-n', '--noninteractive', dest='batch',
                           action='store_true', default=False,
                           help="don't ask how to handle special cases")
+        parser.add_option('-m', '--metadata', dest='metadata',
+                          action='store_true', default=False,
+                          help="extract metadata from a .deb/.gem/etc.")
         self.options, filenames = parser.parse_args(arguments)
         if not filenames:
             parser.error("you did not list any archives")
@@ -571,18 +639,8 @@ class ExtractorApplication(object):
         self.logger.addHandler(handler)
 
     def get_extractor(self):
-        mimetype, encoding = mimetypes.guess_type(self.current_filename)
-        try:
-            extractor = extractor_map[mimetype]
-        except KeyError:
-            if encoding:
-                extractor = CompressionExtractor
-            else:
-                return "not a known archive type"
-        try:
-            self.current_extractor = extractor(self.current_filename, encoding)
-        except ExtractorError, error:
-            return str(error)
+        builder = ExtractorBuilder(self.current_filename, self.options)
+        self.current_extractor = builder.get_extractor()
 
     def get_handler(self):
         for var_name in ('type', 'name'):
