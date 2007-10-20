@@ -76,14 +76,23 @@ class ExtractorTest(object):
         script.close()
         subprocess.call(['chmod', 'u+w', TESTSCRIPT_NAME])
 
+    def run_script(self, key):
+        commands = getattr(self, key)
+        if commands is not None:
+            if self.directory:
+                directory_hint = '../'
+            else:
+                directory_hint = ''
+            self.write_script(commands)
+            subprocess.call(['sh', TESTSCRIPT_NAME, directory_hint])
+
     def get_shell_results(self):
+        self.run_script('prerun')
         self.write_script(self.baseline)
         return self.get_results(['sh', TESTSCRIPT_NAME] + self.filenames)
 
     def get_extractor_results(self):
-        if self.prerun:
-            self.write_script(self.prerun)
-            subprocess.call(['sh', TESTSCRIPT_NAME])
+        self.run_script('prerun')
         input_buffer.seek(0, 0)
         input_buffer.truncate()
         if self.input:
@@ -102,9 +111,7 @@ class ExtractorTest(object):
         return subprocess.call(['sh', TESTSCRIPT_NAME])
 
     def clean(self):
-        if self.cleanup is not None:
-            self.write_script(self.cleanup)
-            subprocess.call(['sh', TESTSCRIPT_NAME])
+        self.run_script('cleanup')
         if self.directory:
             target = os.path.join(ROOT_DIR, self.directory)
             extra_options = ['!', '-name', TESTSCRIPT_NAME]

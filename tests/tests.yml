@@ -101,7 +101,7 @@
 - name: overwrite protection
   filenames: test-1.23.tar.bz2
   baseline: |
-    mkdir test-1.23 test-1.23.1
+    mkdir test-1.23.1
     cd test-1.23.1
     tar -jxf ../$1
   prerun: |
@@ -111,7 +111,6 @@
   filenames: test-1.23.tar.bz2
   options: -n -o
   baseline: |
-    mkdir test-1.23
     cd test-1.23
     tar -jxf ../$1
   prerun: |
@@ -364,3 +363,10 @@
     }
     extract $1
     extract $1 .1
+
+- name: extracting file with bad extension
+  filenames: test-1.23.bin
+  prerun: cp ${1}test-1.23.tar.gz ${1}test-1.23.bin
+  cleanup: rm -f ${1}test-1.23.bin
+  baseline: |
+    tar -zxf $1
