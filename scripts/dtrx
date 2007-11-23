@@ -176,8 +176,8 @@ class BaseExtractor(object):
 
     def check_included_archives(self, filenames):
         for filename in filenames:
-            if (ExtractorBuilder.try_by_mimetype(filename)[0] or
-                ExtractorBuilder.try_by_extension(filename)[0]):
+            if (ExtractorBuilder.try_by_mimetype(filename) or
+                ExtractorBuilder.try_by_extension(filename)):
                 self.included_archives.append(filename)
 
     def check_contents(self):
@@ -250,7 +250,12 @@ class CompressionExtractor(BaseExtractor):
         self.content_type = ONE_ENTRY_KNOWN
         self.content_name = self.basename()
         output_fd, self.target = tempfile.mkstemp(prefix='.dtrx-', dir='.')
-        self.run_pipes(output_fd)
+        try:
+            self.run_pipes(output_fd)
+        except ExtractorError:
+            os.close(output_fd)
+            os.unlink(self.target)
+            raise
         os.close(output_fd)
         
 
@@ -264,20 +269,6 @@ class TarExtractor(BaseExtractor):
         self.run_pipes()
         
         
-class ZipExtractor(BaseExtractor):
-    def __init__(self, filename, encoding):
-        BaseExtractor.__init__(self, '/dev/null', None)
-        self.filename = os.path.realpath(filename)
-
-    def get_filenames(self):
-        self.pipe(['zipinfo', '-1', self.filename], "listing")
-        return BaseExtractor.get_filenames(self)
-
-    def extract_archive(self):
-        self.pipe(['unzip', '-q', self.filename])
-        self.run_pipes()
-
-
 class CpioExtractor(BaseExtractor):
     def get_filenames(self):
         self.pipe(['cpio', '-t'], "listing")
@@ -357,12 +348,31 @@ class GemMetadataExtractor(CompressionExtractor):
         return os.path.basename(self.filename) + '-metadata.txt'
 
 
-class SevenExtractor(BaseExtractor):
-    border_re = re.compile('^[- ]+$')
-
+class NoPipeExtractor(BaseExtractor):
+    # Some extraction tools won't accept the archive from stdin.  With
+    # these, the piping infrastructure we normally set up generally doesn't
+    # work, at least at first.  We can still use most of it; we just can't
+    # seed self.archive with the archive file.  So instead we seed it with
+    # /dev/null, and specify the filename on the command line as necessary.
+    # This class doesn't do anything by itself; it's just meant to be a
+    # base class for extractors that rely on these dumb tools.
     def __init__(self, filename, encoding):
         BaseExtractor.__init__(self, '/dev/null', None)
         self.filename = os.path.realpath(filename)
+
+
+class ZipExtractor(NoPipeExtractor):
+    def get_filenames(self):
+        self.pipe(['zipinfo', '-1', self.filename], "listing")
+        return BaseExtractor.get_filenames(self)
+
+    def extract_archive(self):
+        self.pipe(['unzip', '-q', self.filename])
+        self.run_pipes()
+
+
+class SevenExtractor(NoPipeExtractor):
+    border_re = re.compile('^[- ]+$')
 
     def get_filenames(self):
         self.pipe(['7z', 'l', self.filename], "listing")
@@ -383,6 +393,29 @@ class SevenExtractor(BaseExtractor):
         self.pipe(['7z', 'x', self.filename])
         self.run_pipes()
         
+
+class CABExtractor(NoPipeExtractor):
+    border_re = re.compile(r'^[-\+]+$')
+
+    def get_filenames(self):
+        self.pipe(['cabextract', '-l', self.filename], "listing")
+        self.run_pipes()
+        self.archive.seek(0, 0)
+        fn_index = None
+        for line in self.archive:
+            if self.border_re.match(line):
+                break
+        for line in self.archive:
+            try:
+                yield line.split(' | ', 2)[2].rstrip('\n')
+            except IndexError:
+                break
+        self.archive.close()
+
+    def extract_archive(self):
+        self.pipe(['cabextract', '-q', self.filename])
+        self.run_pipes()
+
 
 class BaseHandler(object):
     def __init__(self, extractor, options):
@@ -458,15 +491,19 @@ class MatchHandler(BaseHandler):
     can_handle = staticmethod(can_handle)
 
     def organize(self):
+        source = os.path.join(self.extractor.target,
+                              os.listdir(self.extractor.target)[0])
+        if os.path.isdir(source):
+            checker = DirectoryChecker
+        else:
+            checker = FilenameChecker
         if self.options.one_entry_policy == EXTRACT_HERE:
             destination = self.extractor.content_name.rstrip('/')
         else:
             destination = self.extractor.basename()
-        self.target = self.extractor.name_checker(destination).check()
+        self.target = checker(destination).check()
         if os.path.isdir(self.extractor.target):
-            os.rename(os.path.join(self.extractor.target,
-                                   os.listdir(self.extractor.target)[0]),
-                      self.target)
+            os.rename(source, self.target)
             os.rmdir(self.extractor.target)
         else:
             os.rename(self.extractor.target, self.target)
@@ -580,7 +617,8 @@ class ExtractorBuilder(object):
                      'cpio': (CpioExtractor, None),
                      'gem': (GemExtractor, GemMetadataExtractor),
                      'compress': (CompressionExtractor, None),
-                     '7z': (SevenExtractor, None)}
+                     '7z': (SevenExtractor, None),
+                     'cab': (CABExtractor, None)}
 
     mimetype_map = {}
     for mapping in (('tar', 'x-tar'),
@@ -589,7 +627,8 @@ class ExtractorBuilder(object):
                     ('rpm', 'x-redhat-package-manager', 'x-rpm'),
                     ('cpio', 'x-cpio'),
                     ('gem', 'x-ruby-gem'),
-                    ('7z', 'x-7z-compressed')):
+                    ('7z', 'x-7z-compressed'),
+                    ('cab', 'x-cab')):
         for mimetype in mapping[1:]:
             if '/' not in mimetype:
                 mimetype = 'application/' + mimetype
@@ -601,7 +640,8 @@ class ExtractorBuilder(object):
                     ('tar', 'POSIX tar archive'),
                     ('zip', 'Zip archive'),
                     ('rpm', 'RPM'),
-                    ('7z', '7-zip archive')):
+                    ('7z', '7-zip archive'),
+                    ('cab', 'Microsoft Cabinet archive')):
         for pattern in mapping[1:]:
             magic_mime_map[re.compile(pattern)] = mapping[0]
     
@@ -620,10 +660,13 @@ class ExtractorBuilder(object):
                     ('rpm', None, 'rpm'),
                     ('cpio', None, 'cpio'),
                     ('gem', None, 'gem'),
-                    ('compress', None, 'Z', 'gz', 'bz2', 'lzma'),
-                    ('7z', None, '7z')):
+                    ('compress', 'gzip', 'Z', 'gz'),
+                    ('compress', 'bzip2', 'bz2'),
+                    ('compress', 'lzma', 'lzma'),
+                    ('7z', None, '7z'),
+                    ('cab', None, 'cab', 'exe')):
         for extension in mapping[2:]:
-            extension_map[extension] = mapping[:2]
+            extension_map.setdefault(extension, []).append(mapping[:2])
 
     def __init__(self, filename, options):
         self.filename = filename
@@ -639,51 +682,56 @@ class ExtractorBuilder(object):
 
     def get_extractor(self):
         for func_name in ('mimetype', 'extension', 'magic'):
-            archive_type, encoding = \
-                          getattr(self, 'try_by_' + func_name)(self.filename)
-            logger.debug("%s extractor is %s, %s" %
-                         (func_name, archive_type, encoding))
-            if archive_type is not None:
-                yield self.build_extractor(archive_type, encoding)
+            logger.debug("getting extractors by %s" % (func_name,))
+            extractor_types = \
+                            getattr(self, 'try_by_' + func_name)(self.filename)
+            logger.debug("done getting extractors")
+            for ext_args in extractor_types:
+                logger.debug("trying %s extractor from %s" %
+                             (ext_args, func_name))
+                yield self.build_extractor(*ext_args)
 
     def try_by_mimetype(cls, filename):
         mimetype, encoding = mimetypes.guess_type(filename)
         try:
-            return cls.mimetype_map[mimetype], encoding
+            return [(cls.mimetype_map[mimetype], encoding)]
         except KeyError:
             if encoding:
-                return 'compress', encoding
-        return None, None
+                return [('compress', encoding)]
+        return []
     try_by_mimetype = classmethod(try_by_mimetype)
 
+    def magic_map_matches(cls, output, magic_map):
+        return [result for regexp, result in magic_map.items()
+                if regexp.search(output)]
+    magic_map_matches = classmethod(magic_map_matches)
+        
     def try_by_magic(cls, filename):
         process = subprocess.Popen(['file', '-z', filename],
                                    stdout=subprocess.PIPE)
         status = process.wait()
         if status != 0:
-            return None, None
+            return []
         output = process.stdout.readline()
         process.stdout.close()
         if output.startswith('%s: ' % filename):
             output = output[len(filename) + 2:]
-        results = [None, None]
-        for index, mapping in enumerate((cls.magic_mime_map,
-                                         cls.magic_encoding_map)):
-            for regexp, result in mapping.items():
-                if regexp.search(output):
-                    results[index] = result
-                    break
-        return results
+        mimes = cls.magic_map_matches(output, cls.magic_mime_map)
+        encodings = cls.magic_map_matches(output, cls.magic_encoding_map)
+        if mimes and not encodings:
+            encodings = [None]
+        elif encodings and not mimes:
+            mimes = ['compress']
+        return [(m, e) for m in mimes for e in encodings]
     try_by_magic = classmethod(try_by_magic)
 
     def try_by_extension(cls, filename):
         parts = filename.rsplit('.', 2)[1:]
+        results = []
         while parts:
-            try:
-                return cls.extension_map['.'.join(parts)]
-            except KeyError:
-                del parts[0]
-        return [None, None]
+            results.extend(cls.extension_map.get('.'.join(parts), []))
+            del parts[0]
+        return results
     try_by_extension = classmethod(try_by_extension)
 
 
@@ -715,6 +763,7 @@ class ExtractionAction(BaseAction):
                                                extractor.content_name)
         for handler in self.handlers:
             if handler.can_handle(extractor.content_type, self.options):
+                logger.debug("using %s handler" % (handler.__name__,))
                 self.current_handler = handler(extractor, self.options)
                 break
 
@@ -789,7 +838,7 @@ class ExtractorApplication(object):
                           help="don't ask how to handle special cases")
         parser.add_option('-m', '--metadata', dest='metadata',
                           action='store_true', default=False,
-                          help="extract metadata from a .deb/.gem/etc.")
+                          help="extract metadata from a .deb/.gem")
         self.options, filenames = parser.parse_args(arguments)
         if not filenames:
             parser.error("you did not list any archives")

@@ -394,3 +394,13 @@
   filenames: /dev/null
   error: true
   grep: ERROR
+
+- name: extract an archive with one file here
+  filenames: test-onefile.tar.gz
+  options: ""
+  grep: "one entry: "
+  input: |
+    h
+    n
+  baseline: |
+    tar -zxf $1
