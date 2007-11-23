@@ -353,12 +353,16 @@ class GemMetadataExtractor(CompressionExtractor):
 class NoPipeExtractor(BaseExtractor):
     # Some extraction tools won't accept the archive from stdin.  With
     # these, the piping infrastructure we normally set up generally doesn't
-    # work, at least at first.  We can still use most of it; we just can't
-    # seed self.archive with the archive file.  So instead we seed it with
-    # /dev/null, and specify the filename on the command line as necessary.
-    # This class doesn't do anything by itself; it's just meant to be a
-    # base class for extractors that rely on these dumb tools.
+    # work, at least at first.  We can still use most of it; we just don't
+    # want to seed self.archive with the archive file, since that sucks up
+    # memory.  So instead we seed it with /dev/null, and specify the
+    # filename on the command line as necessary.  We also open the actual
+    # file with os.open, to make sure we can actually do it (permissions
+    # are good, etc.).  This class doesn't do anything by itself; it's just
+    # meant to be a base class for extractors that rely on these dumb
+    # tools.
     def __init__(self, filename, encoding):
+        os.close(os.open(filename, os.O_RDONLY))
         BaseExtractor.__init__(self, '/dev/null', None)
         self.filename = os.path.realpath(filename)
 
@@ -758,10 +762,7 @@ class BaseAction(object):
         except (ExtractorError, IOError, OSError), exception:
             error = str(exception)
             logger.debug(''.join(traceback.format_exception(*sys.exc_info())))
-        if error:
-            logger.info("%s: %s", self.current_filename, error)
-            return False
-        return True
+        return error
 
 
 class ExtractionAction(BaseAction):
@@ -780,12 +781,12 @@ class ExtractionAction(BaseAction):
 
     def run(self, filename, extractor):
         self.current_filename = filename
-        success = (self.report(extractor.extract) and
-                   self.report(self.get_handler, extractor) and
-                   self.report(self.current_handler.handle))
-        if success:
+        error = (self.report(extractor.extract) or
+                 self.report(self.get_handler, extractor) or
+                 self.report(self.current_handler.handle))
+        if not error:
             self.target = self.current_handler.target
-        return success
+        return error
 
 
 class ListAction(BaseAction):
@@ -809,7 +810,7 @@ class ListAction(BaseAction):
 
     def run(self, filename, extractor):
         self.current_filename = filename
-        return (self.report(self.get_list, extractor) and
+        return (self.report(self.get_list, extractor) or
                 self.report(self.show_list, filename))
 
 
@@ -878,26 +879,49 @@ class ExtractorApplication(object):
                                          action.target, tail_path)
                 self.archives.setdefault(directory, []).append(basename)
 
+    def check_file(self, filename):
+        try:
+            result = os.stat(filename)
+        except OSError, error:
+            return error.strerror
+        if stat.S_ISDIR(result.st_mode):
+            return "cannot extract a directory"
+
+    def try_extractors(self, filename, builder):
+        last_error = "could not find a way to extract this"
+        while True:
+            try:
+                extractor = builder.next()
+            except StopIteration:
+                return last_error
+            except (IOError, OSError, ExtractorError), error:
+                return str(error)
+            error = self.action.run(filename, extractor)
+            if error:
+                logger.info("%s: %s" % (filename, error))
+                last_error = error
+            else:
+                self.recurse(filename, extractor, self.action)
+                return
+        
     def run(self):
         if self.options.show_list:
             action = ListAction
         else:
             action = ExtractionAction
-        action = action(self.options, self.archives.values()[0])
+        self.action = action(self.options, self.archives.values()[0])
         while self.archives:
             self.current_directory, self.filenames = self.archives.popitem()
             os.chdir(self.current_directory)
             for filename in self.filenames:
                 builder = ExtractorBuilder(filename, self.options)
-                for extractor in builder.get_extractor():
-                    if action.run(filename, extractor):
-                        self.successes.append(filename)
-                        self.recurse(filename, extractor, action)
-                        break
-                else:
-                    logger.error("%s: could not find a way to extract this" %
-                                 (filename,))
+                error = (self.check_file(filename) or
+                         self.try_extractors(filename, builder.get_extractor()))
+                if error:
+                    logger.error("%s: %s" % (filename, error))
                     self.failures.append(filename)
+                else:
+                    self.successes.append(filename)
             self.options.one_entry_policy.permanent_policy = EXTRACT_WRAP
         if self.failures:
             return 1

@@ -421,7 +421,49 @@
     cd trickery
     unzip -q ../$1
 
-- name: get an error when extracting a non-archive
+- name: non-archive error
   filenames: /dev/null
   error: true
-  grep: ERROR
+  grep: "could not find a way to extract this"
+
+- name: no such file error
+  filenames: nonexistent-file.tar.gz
+  error: true
+  grep: "[Nn]o such file"
+
+- name: no such file error with no extension
+  filenames: nonexistent-file
+  error: true
+  grep: "[Nn]o such file"
+
+- name: try to extract a directory error
+  filenames: test-directory
+  prerun: mkdir test-directory
+  error: true
+  grep: "cannot extract a directory"
+
+- name: permission denied error
+  filenames: unreadable-file.tar.gz
+  prerun: |
+    touch unreadable-file.tar.gz
+    chmod 000 unreadable-file.tar.gz
+  cleanup: rm -f unreadable-file.tar.gz
+  error: true
+  grep: "[Pp]ermission denied"
+
+- name: permission denied no-pipe file error
+  filenames: unreadable-file.zip
+  prerun: |
+    touch unreadable-file.zip
+    chmod 000 unreadable-file.zip
+  cleanup: rm -f unreadable-file.zip
+  error: true
+  grep: "[Pp]ermission denied"
+
+- name: bad file error
+  filenames: bogus-file.tar.gz
+  prerun: |
+    touch bogus-file.tar.gz
+  cleanup: rm -f bogus-file.tar.gz
+  error: true
+  grep: "returned status code [^0]"
