@@ -41,6 +41,11 @@
   baseline: |
     7z x $1
 
+- name: basic .lzma
+  filenames: test-1.23.tar.lzma
+  baseline: |
+    lzcat $1 | tar -x
+
 - name: .deb metadata
   filenames: test-1.23_all.deb
   options: --metadata

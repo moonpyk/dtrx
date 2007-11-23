@@ -60,6 +60,7 @@ RECURSE_NOT_NOW = 3
 RECURSE_NEVER = 4
 
 mimetypes.encodings_map.setdefault('.bz2', 'bzip2')
+mimetypes.encodings_map.setdefault('.lzma', 'lzma')
 mimetypes.types_map.setdefault('.gem', 'x-ruby-gem')
 
 logger = logging.getLogger('dtrx-log')
@@ -110,7 +111,8 @@ class ExtractorError(Exception):
 
 
 class BaseExtractor(object):
-    decoders = {'bzip2': 'bzcat', 'gzip': 'zcat', 'compress': 'zcat'}
+    decoders = {'bzip2': 'bzcat', 'gzip': 'zcat', 'compress': 'zcat',
+                'lzma': 'lzcat'}
 
     name_checker = DirectoryChecker
 
@@ -618,7 +620,7 @@ class ExtractorBuilder(object):
                     ('rpm', None, 'rpm'),
                     ('cpio', None, 'cpio'),
                     ('gem', None, 'gem'),
-                    ('compress', None, 'gz', 'bz2'),
+                    ('compress', None, 'Z', 'gz', 'bz2', 'lzma'),
                     ('7z', None, '7z')):
         for extension in mapping[2:]:
             extension_map[extension] = mapping[:2]
