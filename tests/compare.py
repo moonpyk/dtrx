@@ -117,9 +117,11 @@ class ExtractorTest(object):
             extra_options = ['!', '-name', TESTSCRIPT_NAME]
         else:
             target = ROOT_DIR
-            extra_options = ['-type', 'd',
+            extra_options = ['(', '(', '-type', 'd',
                              '!', '-name', 'CVS',
-                             '!', '-name', '.svn']
+                             '!', '-name', '.svn', ')',
+                             '-or', '-name', 'test-text',
+                             '-or', '-name', 'test-onefile', ')']
         status = subprocess.call(['find', target,
                                   '-mindepth', '1', '-maxdepth', '1'] +
                                  extra_options +

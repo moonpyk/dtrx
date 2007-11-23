@@ -287,6 +287,37 @@
   baseline: |
     tar -zxf $1
 
+- name: default behavior with one file
+  options: -n
+  filenames: test-onefile.tar.gz
+  baseline: |
+    mkdir test-onefile
+    cd test-onefile
+    tar -zxf ../$1
+
+- name: one file extracted inside a directory
+  options: ""
+  filenames: test-onefile.tar.gz
+  input: i
+  baseline: |
+    mkdir test-onefile
+    cd test-onefile
+    tar -zxf ../$1
+
+- name: one file extracted with rename
+  options: ""
+  filenames: test-onefile.tar.gz
+  input: r
+  baseline: |
+    tar -zxOf $1 >test-onefile
+
+- name: one file extracted here
+  options: ""
+  filenames: test-onefile.tar.gz
+  input: h
+  baseline: |
+    tar -zxf $1
+
 - name: bomb with preceding dot in the table
   filenames: test-dot-first-bomb.tar.gz
   options: ""
@@ -394,13 +425,3 @@
   filenames: /dev/null
   error: true
   grep: ERROR
-
-- name: extract an archive with one file here
-  filenames: test-onefile.tar.gz
-  options: ""
-  grep: "one entry: "
-  input: |
-    h
-    n
-  baseline: |
-    tar -zxf $1
