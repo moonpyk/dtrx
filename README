@@ -5,8 +5,8 @@ Introduction
 ------------
 
 dtrx extracts archives in a number of different formats; it currently
-supports tar, zip, cpio, rpm, and deb.  It can also decompress files
-compressed with gzip, bzip2, or compress.
+supports tar, zip, cpio, rpm, deb, gem, 7z, and cab files.  It can also
+decompress files compressed with gzip, bzip2, lzma, or compress.
 
 In addition to providing one command to handle many different archive
 types, dtrx also aids the user by extracting contents consistently.  By
@@ -14,13 +14,31 @@ default, everything will be written to a dedicated directory that's named
 after the archive.  dtrx will also change the permissions to ensure that the
 owner can read and write all those files.
 
+Requirements
+------------
+
+If you have Python 2.4, this should work out of the box.  If you're stuck
+on Python 2.3, you can use this if you install the `subprocess module`_.
+You'll need the usual tools for the archive types you want to extract: for
+example, if you're extracting zip files, you'll need zipinfo and unzip.
+
+.. _`subprocess module`: http://www.lysator.liu.se/~astrand/popen5/
+
+Installation
+------------
+
+You can just put scripts/dtrx wherever is convenient for you, but if you
+want to install the program system-wide, you can also run::
+
+   # python setup.py install
+
 Running dtrx
 ------------
 
 To run dtrx, simply call it with the archive(s) you wish to extract as
 arguments.  For example::
 
-   dtrx coreutils-5.*.tar.gz
+   $ dtrx coreutils-5.*.tar.gz
 
 dtrx supports a number of options to mandate specific behavior:
 
@@ -43,10 +61,15 @@ dtrx supports a number of options to mandate specific behavior:
 -n, --noninteractive
    dtrx will normally ask the user how to handle certain corner cases, such
    as how to handle an archive that only contains one file.  This option
-   suppresses those questions; dtrx will instead use sane defaults.
+   suppresses those questions; dtrx will instead use sane, conservative
+   defaults.
 
 -l, -t, --list, --table
    Don't extract the archives; just list their contents on standard output.
+
+-m, --metadata
+   Extract the metadata from .deb and .gem archives, instead of their normal
+   contents.
 
 -q, --quiet
    Suppress warning messages.  Listing this option twice will cause the
