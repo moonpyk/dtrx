@@ -30,6 +30,8 @@ import tempfile
 import textwrap
 import traceback
 
+from sets import Set
+
 VERSION = "5.0"
 VERSION_BANNER = """dtrx version %s
 Copyright (c) 2006, 2007 Brett Smith <brettcsmith@brettcsmith.org>
@@ -681,12 +683,21 @@ class ExtractorBuilder(object):
         return extractor(self.filename, encoding)
 
     def get_extractor(self):
+        tried_types = Set()
+        # As smart as it is, the magic test can't go first, because at least
+        # on my system it just recognizes gem files as tar files.  I guess
+        # it's possible for the opposite problem to occur -- where the mimetype
+        # or extension suggests something less than ideal -- but it seems less
+        # likely so I'm sticking with this.
         for func_name in ('mimetype', 'extension', 'magic'):
             logger.debug("getting extractors by %s" % (func_name,))
             extractor_types = \
                             getattr(self, 'try_by_' + func_name)(self.filename)
             logger.debug("done getting extractors")
             for ext_args in extractor_types:
+                if ext_args in tried_types:
+                    continue
+                tried_types.add(ext_args)
                 logger.debug("trying %s extractor from %s" %
                              (ext_args, func_name))
                 yield self.build_extractor(*ext_args)
