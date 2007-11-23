@@ -30,8 +30,6 @@ import tempfile
 import textwrap
 import traceback
 
-from cStringIO import StringIO
-
 VERSION = "5.0"
 VERSION_BANNER = """dtrx version %s
 Copyright (c) 2006, 2007 Brett Smith <brettcsmith@brettcsmith.org>
@@ -176,7 +174,8 @@ class BaseExtractor(object):
 
     def check_included_archives(self, filenames):
         for filename in filenames:
-            if ExtractorBuilder.try_by_mimetype(filename)[0]:
+            if (ExtractorBuilder.try_by_mimetype(filename)[0] or
+                ExtractorBuilder.try_by_extension(filename)[0]):
                 self.included_archives.append(filename)
 
     def check_contents(self):
@@ -350,6 +349,33 @@ class GemMetadataExtractor(CompressionExtractor):
     def basename(self):
         return os.path.basename(self.filename) + '-metadata.txt'
 
+
+class SevenExtractor(BaseExtractor):
+    border_re = re.compile('^[- ]+$')
+
+    def __init__(self, filename, encoding):
+        BaseExtractor.__init__(self, '/dev/null', None)
+        self.filename = os.path.realpath(filename)
+
+    def get_filenames(self):
+        self.pipe(['7z', 'l', self.filename], "listing")
+        self.run_pipes()
+        self.archive.seek(0, 0)
+        fn_index = None
+        for line in self.archive:
+            if self.border_re.match(line):
+                if fn_index is not None:
+                    break
+                else:
+                    fn_index = line.rindex(' ') + 1
+            elif fn_index is not None:
+                yield line[fn_index:-1]
+        self.archive.close()
+
+    def extract_archive(self):
+        self.pipe(['7z', 'x', self.filename])
+        self.run_pipes()
+        
 
 class BaseHandler(object):
     def __init__(self, extractor, options):
@@ -546,7 +572,8 @@ class ExtractorBuilder(object):
                      'rpm': (RPMExtractor, None),
                      'cpio': (CpioExtractor, None),
                      'gem': (GemExtractor, GemMetadataExtractor),
-                     'compress': (CompressionExtractor, None)}
+                     'compress': (CompressionExtractor, None),
+                     '7z': (SevenExtractor, None)}
 
     mimetype_map = {}
     for mapping in (('tar', 'x-tar'),
@@ -554,7 +581,8 @@ class ExtractorBuilder(object):
                     ('deb', 'x-debian-package'),
                     ('rpm', 'x-redhat-package-manager', 'x-rpm'),
                     ('cpio', 'x-cpio'),
-                    ('gem', 'x-ruby-gem')):
+                    ('gem', 'x-ruby-gem'),
+                    ('7z', 'x-7z-compressed')):
         for mimetype in mapping[1:]:
             if '/' not in mimetype:
                 mimetype = 'application/' + mimetype
@@ -565,7 +593,8 @@ class ExtractorBuilder(object):
                     ('cpio', 'cpio archive'),
                     ('tar', 'POSIX tar archive'),
                     ('zip', 'Zip archive'),
-                    ('rpm', 'RPM')):
+                    ('rpm', 'RPM'),
+                    ('7z', '7-zip archive')):
         for pattern in mapping[1:]:
             magic_mime_map[re.compile(pattern)] = mapping[0]
     
@@ -584,7 +613,8 @@ class ExtractorBuilder(object):
                     ('rpm', None, 'rpm'),
                     ('cpio', None, 'cpio'),
                     ('gem', None, 'gem'),
-                    ('compress', None, 'gz', 'bz2')):
+                    ('compress', None, 'gz', 'bz2'),
+                    ('7z', None, '7z')):
         for extension in mapping[2:]:
             extension_map[extension] = mapping[:2]
 
