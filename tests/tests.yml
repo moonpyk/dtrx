@@ -447,7 +447,6 @@
   prerun: |
     touch unreadable-file.tar.gz
     chmod 000 unreadable-file.tar.gz
-  cleanup: rm -f unreadable-file.tar.gz
   error: true
   grep: "[Pp]ermission denied"
 
@@ -456,7 +455,6 @@
   prerun: |
     touch unreadable-file.zip
     chmod 000 unreadable-file.zip
-  cleanup: rm -f unreadable-file.zip
   error: true
   grep: "[Pp]ermission denied"
 
@@ -467,3 +465,10 @@
   cleanup: rm -f bogus-file.tar.gz
   error: true
   grep: "returned status code [^0]"
+
+- name: try to extract in unwritable directory
+  directory: unwritable-dir
+  filenames: ../test-1.23.tar.gz
+  prerun: chmod 500 .
+  error: true
+  grep: "cannot extract here: [Pp]ermission denied"

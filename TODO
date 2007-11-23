@@ -1,11 +1,7 @@
-* Make sure you only try each extractor once?
-
 Things which I have a use case/anti-use case for:
 * Support pisi packages (http://paketler.pardus.org.tr/pardus-2007/)
 * Steal ideas from <http://martin.ankerl.com/files/e>.
-* Figure out what the deal is with strerror. (done?)
-* Better error messages (file doesn't exist, isn't readable, etc.)
-* Consistently raise and handle exceptions.
+* More consistently raise and handle exceptions.
 
 Things that are generally good:
 * Better tests.

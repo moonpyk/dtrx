@@ -211,7 +211,10 @@ class BaseExtractor(object):
         return '.'.join(pieces)
 
     def extract(self):
-        self.target = tempfile.mkdtemp(prefix='.dtrx-', dir='.')
+        try:
+            self.target = tempfile.mkdtemp(prefix='.dtrx-', dir='.')
+        except (OSError, IOError), error:
+            raise ExtractorError("cannot extract here: %s" % (error.strerror,))
         old_path = os.path.realpath(os.curdir)
         os.chdir(self.target)
         try:
@@ -251,7 +254,10 @@ class CompressionExtractor(BaseExtractor):
     def extract(self):
         self.content_type = ONE_ENTRY_KNOWN
         self.content_name = self.basename()
-        output_fd, self.target = tempfile.mkstemp(prefix='.dtrx-', dir='.')
+        try:
+            output_fd, self.target = tempfile.mkstemp(prefix='.dtrx-', dir='.')
+        except (OSError, IOError), error:
+            raise ExtractorError("cannot extract here: %s" % (error.strerror,))
         try:
             self.run_pipes(output_fd)
         except ExtractorError:
