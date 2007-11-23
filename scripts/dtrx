@@ -62,7 +62,9 @@ RECURSE_NOT_NOW = 3
 RECURSE_NEVER = 4
 
 mimetypes.encodings_map.setdefault('.bz2', 'bzip2')
-mimetypes.types_map['.exe'] = 'application/x-msdos-program'
+mimetypes.types_map.setdefault('.gem', 'x-ruby-gem')
+
+logger = logging.getLogger('dtrx-log')
 
 def run_command(command, description, stdout=None, stderr=None, stdin=None):
     process = subprocess.Popen(command, stdin=stdin, stdout=stdout,
@@ -174,7 +176,7 @@ class BaseExtractor(object):
 
     def check_included_archives(self, filenames):
         for filename in filenames:
-            if extractor_map.has_key(mimetypes.guess_type(filename)[0]):
+            if ExtractorBuilder.try_by_mimetype(filename)[0]:
                 self.included_archives.append(filename)
 
     def check_contents(self):
@@ -351,7 +353,6 @@ class GemMetadataExtractor(CompressionExtractor):
 
 class BaseHandler(object):
     def __init__(self, extractor, options):
-        self.logger = logging.getLogger('dtrx-log')
         self.extractor = extractor
         self.options = options
         self.target = None
@@ -389,9 +390,9 @@ class FlatHandler(BaseHandler):
                                                topdown=False):
             path_parts = curdir.split(os.sep)
             if path_parts[0] == '.':
-                path_parts.pop(1)
+                del path_parts[1]
             else:
-                path_parts.pop(0)
+                del path_parts[0]
             newdir = os.path.join(*path_parts)
             if not os.path.isdir(newdir):
                 os.makedirs(newdir)
@@ -514,7 +515,9 @@ class RecursionPolicy(BasePolicy):
 
     def __init__(self, options):
         BasePolicy.__init__(self, options)
-        if options.recursive:
+        if options.show_list:
+            self.permanent_policy = RECURSE_NEVER
+        elif options.recursive:
             self.permanent_policy = RECURSE_ALWAYS
 
     def prep(self, current_filename, included_archives):
@@ -535,18 +538,6 @@ class RecursionPolicy(BasePolicy):
     def ok_to_recurse(self):
         return self.current_policy in (RECURSE_ALWAYS, RECURSE_ONCE)
             
-
-extractor_map = {'application/x-tar': TarExtractor,
-                 'application/zip': ZipExtractor,
-                 'application/x-msdos-program': ZipExtractor,
-                 'application/x-debian-package': DebExtractor,
-                 'application/x-redhat-package-manager': RPMExtractor,
-                 'application/x-rpm': RPMExtractor,
-                 'application/x-cpio': CpioExtractor,
-                 'application/x-ruby-gem': GemExtractor}
-
-handlers = [FlatHandler, OverwriteHandler, MatchHandler, EmptyHandler,
-            BombHandler]
 
 class ExtractorBuilder(object):
     extractor_map = {'tar': (TarExtractor, None),
@@ -584,6 +575,19 @@ class ExtractorBuilder(object):
         for pattern in mapping[1:]:
             magic_encoding_map[re.compile(pattern)] = mapping[0]
 
+    extension_map = {}
+    for mapping in (('tar', 'bzip2', 'tar.bz2'),
+                    ('tar', 'gzip', 'tar.gz', 'tgz'),
+                    ('tar', None, 'tar'),
+                    ('zip', None, 'zip', 'exe'),
+                    ('deb', None, 'deb'),
+                    ('rpm', None, 'rpm'),
+                    ('cpio', None, 'cpio'),
+                    ('gem', None, 'gem'),
+                    ('compress', None, 'gz', 'bz2')):
+        for extension in mapping[2:]:
+            extension_map[extension] = mapping[:2]
+
     def __init__(self, filename, options):
         self.filename = filename
         self.options = options
@@ -597,38 +601,117 @@ class ExtractorBuilder(object):
         return extractor(self.filename, encoding)
 
     def get_extractor(self):
-        for func_name in ('mimetype', 'magic'):
-            archive_type, encoding = getattr(self, 'try_by_' + func_name)()
+        for func_name in ('mimetype', 'extension', 'magic'):
+            archive_type, encoding = \
+                          getattr(self, 'try_by_' + func_name)(self.filename)
             if archive_type is not None:
                 yield self.build_extractor(archive_type, encoding)
 
-    def try_by_mimetype(self):
-        mimetype, encoding = mimetypes.guess_type(self.filename)
+    def try_by_mimetype(cls, filename):
+        mimetype, encoding = mimetypes.guess_type(filename)
         try:
-            return self.mimetype_map[mimetype], encoding
+            return cls.mimetype_map[mimetype], encoding
         except KeyError:
             if encoding:
                 return 'compress', encoding
         return None, None
+    try_by_mimetype = classmethod(try_by_mimetype)
 
-    def try_by_magic(self):
-        process = subprocess.Popen(['file', '-z', self.filename],
+    def try_by_magic(cls, filename):
+        process = subprocess.Popen(['file', '-z', filename],
                                    stdout=subprocess.PIPE)
         status = process.wait()
         if status != 0:
             return None, None
         output = process.stdout.readline()
         process.stdout.close()
-        if output.startswith('%s: ' % self.filename):
-            output = output[len(self.filename) + 2:]
+        if output.startswith('%s: ' % filename):
+            output = output[len(filename) + 2:]
         results = [None, None]
-        for index, mapping in enumerate((self.magic_mime_map,
-                                         self.magic_encoding_map)):
+        for index, mapping in enumerate((cls.magic_mime_map,
+                                         cls.magic_encoding_map)):
             for regexp, result in mapping.items():
                 if regexp.search(output):
                     results[index] = result
                     break
         return results
+    try_by_magic = classmethod(try_by_magic)
+
+    def try_by_extension(cls, filename):
+        parts = filename.rsplit('.', 2)[1:]
+        while parts:
+            try:
+                return cls.extension_map['.'.join(parts)]
+            except KeyError:
+                del parts[0]
+        return [None, None]
+    try_by_extension = classmethod(try_by_extension)
+
+
+class BaseAction(object):
+    def __init__(self, options, filenames):
+        self.options = options
+        self.filenames = filenames
+        self.target = None
+        
+    def report(self, function, *args):
+        try:
+            error = function(*args)
+        except (ExtractorError, IOError, OSError), exception:
+            error = str(exception)
+            logger.debug(traceback.format_exception(*sys.exc_info()))
+        if error:
+            logger.error("%s: %s", self.current_filename, error)
+            return False
+        return True
+
+
+class ExtractionAction(BaseAction):
+    handlers = [FlatHandler, OverwriteHandler, MatchHandler, EmptyHandler,
+                BombHandler]
+
+    def get_handler(self, extractor):
+        if extractor.content_type == ONE_ENTRY:
+            self.options.one_entry_policy.prep(self.current_filename,
+                                               extractor.content_name)
+        for handler in self.handlers:
+            if handler.can_handle(extractor.content_type, self.options):
+                self.current_handler = handler(extractor, self.options)
+                break
+
+    def run(self, filename, extractor):
+        self.current_filename = filename
+        success = (self.report(extractor.extract) and
+                   self.report(self.get_handler, extractor) and
+                   self.report(self.current_handler.handle))
+        if success:
+            self.target = self.current_handler.target
+        return success
+
+
+class ListAction(BaseAction):
+    def __init__(self, options, filenames):
+        BaseAction.__init__(self, options, filenames)
+
+    def get_list(self, extractor):
+        # Note: The reason I'm getting all the filenames up front is
+        # because if we run into trouble partway through the archive, we'll
+        # try another extractor.  So before we display anything we have to
+        # be sure this one is successful.  We maybe don't have to be quite
+        # this conservative but this is the easy way out for now.
+        self.filelist = list(extractor.get_filenames())
+
+    def show_list(self, filename):
+        if len(self.filenames) != 1:
+            if filename != self.filenames[0]:
+                print
+            print "%s:" % (filename,)
+        print '\n'.join(self.filelist)
+
+    def run(self, filename, extractor):
+        self.current_filename = filename
+        return (self.report(self.get_list, extractor) and
+                self.report(self.show_list, filename))
 
 
 class ExtractorApplication(object):
@@ -676,98 +759,41 @@ class ExtractorApplication(object):
         self.archives = {os.path.realpath(os.curdir): filenames}
 
     def setup_logger(self):
-        self.logger = logging.getLogger('dtrx-log')
         handler = logging.StreamHandler()
         # WARNING is the default.
         handler.setLevel(10 * (self.options.quiet - self.options.verbose))
         formatter = logging.Formatter("dtrx: %(levelname)s: %(message)s")
         handler.setFormatter(formatter)
-        self.logger.addHandler(handler)
+        logger.addHandler(handler)
 
-    def get_handler(self):
-        for var_name in ('type', 'name'):
-            exec('content_%s = self.current_extractor.content_%s' %
-                 (var_name, var_name))
-        if content_type == ONE_ENTRY:
-            self.options.one_entry_policy.prep(self.current_filename,
-                                               content_name)
-        for handler in handlers:
-            if handler.can_handle(content_type, self.options):
-                self.current_handler = handler(self.current_extractor,
-                                               self.options)
-                break
-
-    def recurse(self):
-        archives = self.current_extractor.included_archives
-        self.options.recursion_policy.prep(self.current_filename, archives)
+    def recurse(self, filename, extractor, action):
+        archives = extractor.included_archives
+        self.options.recursion_policy.prep(filename, archives)
         if self.options.recursion_policy.ok_to_recurse():
             for filename in archives:
                 tail_path, basename = os.path.split(filename)
                 directory = os.path.join(self.current_directory,
-                                         self.current_handler.target, tail_path)
+                                         action.target, tail_path)
                 self.archives.setdefault(directory, []).append(basename)
-
-    def report(self, function, *args):
-        try:
-            error = function(*args)
-        except (ExtractorError, IOError, OSError), exception:
-            error = str(exception)
-            self.logger.debug(traceback.format_exception(*sys.exc_info()))
-        if error:
-            self.logger.error("%s: %s", self.current_filename, error)
-            return False
-        return True
-
-    def record_status(self, success):
-        if success:
-            self.successes.append(self.current_filename)
-        else:
-            self.failures.append(self.current_filename)
-
-    def extract(self):
-        success = (self.report(self.current_extractor.extract) and
-                   self.report(self.get_handler) and
-                   self.report(self.current_handler.handle))
-        if success:
-            self.recurse()
-        return success
-
-    def show_contents(self):
-        for filename in self.current_extractor.get_filenames():
-            print filename
-
-    def make_list(self):
-        if len(self.archives.values()[0]) == 1:
-            def show_list():
-                return self.report(self.show_contents)
-        else:
-            def show_list():
-                if self.current_filename == self.filenames[0]:
-                    print "%s:\n" % (self.current_filename,),
-                else:
-                    print "\n%s:\n" % (self.current_filename,),
-                return self.report(self.show_contents)
-        return show_list
 
     def run(self):
         if self.options.show_list:
-            action_function = self.make_list()
+            action = ListAction
         else:
-            action_function = self.extract
+            action = ExtractionAction
+        action = action(self.options, self.archives.values()[0])
         while self.archives:
             self.current_directory, self.filenames = self.archives.popitem()
             os.chdir(self.current_directory)
             for filename in self.filenames:
-                self.current_filename = filename
-                builder = ExtractorBuilder(self.current_filename, self.options)
+                builder = ExtractorBuilder(filename, self.options)
                 for extractor in builder.get_extractor():
-                    self.current_extractor = extractor
-                    success = action_function()
-                    if success:
-                        self.record_status(success)
+                    if action.run(filename, extractor):
+                        self.successes.append(filename)
+                        self.recurse(filename, extractor, action)
                         break
                 else:
-                    self.record_status(success=False)
+                    self.failures.append(filename)
             self.options.one_entry_policy.permanent_policy = EXTRACT_WRAP
         if self.failures:
             return 1

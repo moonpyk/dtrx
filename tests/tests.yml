@@ -36,6 +36,11 @@
     cd test-1.23
     tar -xOf ../$1 data.tar.gz | tar -zx
 
+- name: basic .7z
+  filenames: test-1.23.7z
+  baseline: |
+    7z x $1
+
 - name: .deb metadata
   filenames: test-1.23_all.deb
   options: --metadata

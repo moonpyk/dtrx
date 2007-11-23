@@ -1,16 +1,7 @@
-We should always extract to a new, temporary directory (except maybe in the
-straight decompression case), and then move that directory based on what we
-actually want.  This has several advantages:
-
-* Much easier to check whether or not the archive is a bomb (O(1) operation)
-* Can find other archives more reliably
-* Can set up a direct pipe from a decompressed to the unarchiver, since we're
-  not interested in reading it multiple times anymore.
-* All this should mean x is faster, too.
+* Make sure you only try each extractor once?
 
 Things which I have a use case/anti-use case for:
 * CAB extraction.
-* Use file to detect the archive type.
 * Support lzma compression (http://tukaani.org/lzma/download)
 * Support pisi packages (http://paketler.pardus.org.tr/pardus-2007/)
 * Steal ideas from <http://martin.ankerl.com/files/e>.
@@ -23,10 +14,8 @@ Things that are generally good:
 * Better error messages.
 
 Things I think might be good but can't prove:
-* Take URLs as arguments.
 * Consider having options about whether or not to make sane directories,
   have tarbomb protection, etc.
 * Use zipfile instead of the zip commands.
 * Processing from stdin.
-* Extracting control.tar.gz from deb files.
 * shar support.
