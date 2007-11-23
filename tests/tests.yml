@@ -375,3 +375,17 @@
   cleanup: rm -f ${1}test-1.23.bin
   baseline: |
     tar -zxf $1
+
+- name: extracting file with misleading extension
+  filenames: trickery.tar.gz
+  prerun: cp ${1}test-1.23.zip ${1}trickery.tar.gz
+  cleanup: rm -f ${1}trickery.tar.gz
+  baseline: |
+    mkdir trickery
+    cd trickery
+    unzip -q ../$1
+
+- name: get an error when extracting a non-archive
+  filenames: /dev/null
+  error: true
+  grep: ERROR

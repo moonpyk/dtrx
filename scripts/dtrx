@@ -210,9 +210,14 @@ class BaseExtractor(object):
         self.target = tempfile.mkdtemp(prefix='.dtrx-', dir='.')
         old_path = os.path.realpath(os.curdir)
         os.chdir(self.target)
-        self.archive.seek(0, 0)
-        self.extract_archive()
-        self.check_contents()
+        try:
+            self.archive.seek(0, 0)
+            self.extract_archive()
+            self.check_contents()
+        except ExtractorError:
+            os.chdir(old_path)
+            subprocess.call(['rm', '-rf', self.target])
+            raise
         os.chdir(old_path)
 
     def get_filenames(self):
@@ -634,6 +639,8 @@ class ExtractorBuilder(object):
         for func_name in ('mimetype', 'extension', 'magic'):
             archive_type, encoding = \
                           getattr(self, 'try_by_' + func_name)(self.filename)
+            logger.debug("%s extractor is %s, %s" %
+                         (func_name, archive_type, encoding))
             if archive_type is not None:
                 yield self.build_extractor(archive_type, encoding)
 
@@ -689,9 +696,9 @@ class BaseAction(object):
             error = function(*args)
         except (ExtractorError, IOError, OSError), exception:
             error = str(exception)
-            logger.debug(traceback.format_exception(*sys.exc_info()))
+            logger.debug(''.join(traceback.format_exception(*sys.exc_info())))
         if error:
-            logger.error("%s: %s", self.current_filename, error)
+            logger.info("%s: %s", self.current_filename, error)
             return False
         return True
 
@@ -789,12 +796,15 @@ class ExtractorApplication(object):
         self.archives = {os.path.realpath(os.curdir): filenames}
 
     def setup_logger(self):
-        handler = logging.StreamHandler()
         # WARNING is the default.
-        handler.setLevel(10 * (self.options.quiet - self.options.verbose))
+        log_level = (10 * (self.options.quiet - self.options.verbose))
+        logging.getLogger().setLevel(log_level)
+        handler = logging.StreamHandler()
+        handler.setLevel(log_level)
         formatter = logging.Formatter("dtrx: %(levelname)s: %(message)s")
         handler.setFormatter(formatter)
         logger.addHandler(handler)
+        logger.debug("logger is set up")
 
     def recurse(self, filename, extractor, action):
         archives = extractor.included_archives
@@ -823,6 +833,8 @@ class ExtractorApplication(object):
                         self.recurse(filename, extractor, action)
                         break
                 else:
+                    logger.error("%s: could not find a way to extract this" %
+                                 (filename,))
                     self.failures.append(filename)
             self.options.one_entry_policy.permanent_policy = EXTRACT_WRAP
         if self.failures:
