@@ -1,18 +1,18 @@
-x Installation Documentation
-============================
+dtrx Installation Documentation
+===============================
 
 Requirements
 ------------
 
-To run x, you'll need Python_ 2.4 or greater.  You can also use Python 2.3
-if you separately install the `subprocess module`_.
+dtrx will work out of the box with Python_ 2.4 or greater.  You can also
+use Python 2.3 if you separately install the `subprocess module`_.
 
 .. _Python: http://www.python.org/
 .. _`subprocess module`: http://www.lysator.liu.se/~astrand/popen5/
 
-x calls out to different external tools to support different archive types.
-Most of these are already installed on most GNU/Linux systems, so you
-probably won't have to worry about these too much, but just for
+dtrx calls out to different external tools to support different archive
+types.  Most of these are already installed on most GNU/Linux systems, so
+you probably won't have to worry about these too much, but just for
 completeness, the exact requirements for each format are as follows:
 
 tar archives
@@ -30,18 +30,30 @@ rpm archives
 deb archives
   ar, tar, zcat
 
+gem archives
+  tar, zcat
+
+7z archives
+  7z
+
+Microsoft Cabinet archives
+  cabextract
+
 Files compressed with gzip or compress
   zcat
 
 Files compressed with bzip2
   bzcat
 
+Files compressed with lzma
+  lzcat
+
 Installation
 ------------
 
-x is just a simple script, making it easy to stash wherever you need it.
-Just copy ``scripts/x`` to a location that's convenient for you.  If you'd
-like to install the program system-wide, you can run the following as root
-or equivalent::
+dtrx is just a simple script, making it easy to stash wherever you need it.
+Just copy ``scripts/dtrx`` to a location that's convenient for you.  If
+you'd like to install the program system-wide, you can run the following as
+root or equivalent::
 
    python setup.py install

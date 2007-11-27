@@ -14,24 +14,6 @@ default, everything will be written to a dedicated directory that's named
 after the archive.  dtrx will also change the permissions to ensure that the
 owner can read and write all those files.
 
-Requirements
-------------
-
-If you have Python 2.4, this should work out of the box.  If you're stuck
-on Python 2.3, you can use this if you install the `subprocess module`_.
-You'll need the usual tools for the archive types you want to extract: for
-example, if you're extracting zip files, you'll need zipinfo and unzip.
-
-.. _`subprocess module`: http://www.lysator.liu.se/~astrand/popen5/
-
-Installation
-------------
-
-You can just put scripts/dtrx wherever is convenient for you, but if you
-want to install the program system-wide, you can also run::
-
-   # python setup.py install
-
 Running dtrx
 ------------
 
@@ -93,7 +75,7 @@ comments, bug reports, patches, and so on.  You can find the latest version
 of dtrx on `its home page`_.
 
 .. _`Brett Smith`: mailto:brettcsmith@brettcsmith.org
-.. _`its home page`: http://www.brettcsmith.org/2006/x/
+.. _`its home page`: http://www.brettcsmith.org/2007/dtrx/
 
 dtrx is free software; you can redistribute it and/or modify it under the
 terms of the GNU General Public License as published by the Free Software
@@ -106,5 +88,4 @@ FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
 more details.
 
 You should have received a copy of the GNU General Public License along
-with this program; if not, write to the Free Software Foundation, Inc., 51
-Franklin Street, 5th Floor, Boston, MA, 02111.
+with this program; if not, see <http://www.gnu.org/licenses/>.

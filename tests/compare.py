@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# compare.py -- High-level tests for x.
+# compare.py -- High-level tests for dtrx.
 # Copyright (c) 2006, 2007 Brett Smith <brettcsmith@brettcsmith.org>.
 #
 # This program is free software; you can redistribute it and/or modify it
@@ -14,8 +14,7 @@
 # Public License for more details.
 #
 # You should have received a copy of the GNU General Public License along
-# with this program; if not, write to the Free Software Foundation, Inc.,
-# 51 Franklin Street, 5th Floor, Boston, MA, 02111.
+# with this program; if not, see <http://www.gnu.org/licenses/>.
 
 import os
 import re
