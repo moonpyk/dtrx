@@ -472,3 +472,25 @@
   prerun: chmod 500 .
   error: true
   grep: "cannot extract here: [Pp]ermission denied"
+
+- name: recursive listing is a no-op
+  options: -rl
+  filenames: test-recursive-badperms.tar.bz2
+  grep: test-badperms.tar
+  antigrep: testdir/
+
+- name: graceful coping when many extraction directories are taken
+  directory: busydir
+  prerun: |
+    mkdir test-1.23
+    for i in $(seq 1 10); do mkdir test-1.23.$i; done
+  filenames: ../test-1.23.tar.gz
+  grep: "WARNING: extracting"
+
+- name: graceful coping when many decompression targets are taken
+  directory: busydir
+  prerun: |
+    touch test-text
+    for i in $(seq 1 10); do touch test-text.$i; done
+  filenames: ../test-text.gz
+  grep: "WARNING: extracting"
