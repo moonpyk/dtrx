@@ -58,14 +58,14 @@ dtrx supports a number of options to mandate specific behavior:
    dtrx to be silent if at all possible.
 
 -v, --verbose
-   Print more information about x's behavior.  You can list this option up
-   to three times for more information.
+   Print more information about dtrx's behavior.  You can list this option
+   up to three times for more information.
 
 --help
    Display basic help.
 
 --version
-   Display x's version, copyright, and license information.
+   Display dtrx's version, copyright, and license information.
 
 Other Useful Information
 ------------------------
