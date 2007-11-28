@@ -762,7 +762,7 @@ class ExtractorBuilder(object):
     try_by_magic = classmethod(try_by_magic)
 
     def try_by_extension(cls, filename):
-        parts = filename.rsplit('.', 2)[1:]
+        parts = filename.split('.')[-2:]
         results = []
         while parts:
             results.extend(cls.extension_map.get('.'.join(parts), []))
