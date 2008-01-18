@@ -968,6 +968,7 @@ class ExtractorApplication(object):
             self.current_directory, self.filenames = self.archives.popitem()
             os.chdir(self.current_directory)
             for filename in self.filenames:
+                logger.info("handling %s" % (filename,))
                 builder = ExtractorBuilder(filename, self.options)
                 error = (self.check_file(filename) or
                          self.try_extractors(filename, builder.get_extractor()))
@@ -976,6 +977,7 @@ class ExtractorApplication(object):
                         logger.error("%s: %s" % (filename, error))
                     self.failures.append(filename)
                 else:
+                    logger.info("finished handling %s" % (filename,))
                     self.successes.append(filename)
             self.options.one_entry_policy.permanent_policy = EXTRACT_WRAP
         if self.failures:
