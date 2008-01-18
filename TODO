@@ -1,3 +1,9 @@
+To do:
+* Fix recursive extraction to check subdirectories
+* Add ability to list included archives for recursive extraction
+* Make C-c not print a stack trace.
+* Make -v report some kind of progress
+
 Things which I have a use case/anti-use case for:
 * Support pisi packages (http://paketler.pardus.org.tr/pardus-2007/)
 * Steal ideas from <http://martin.ankerl.com/files/e>.

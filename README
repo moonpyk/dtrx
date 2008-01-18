@@ -70,9 +70,9 @@ dtrx supports a number of options to mandate specific behavior:
 Other Useful Information
 ------------------------
 
-dtrx 5.0 is copyright (c) 2006, 2007 `Brett Smith`_.  Feel free to send
-comments, bug reports, patches, and so on.  You can find the latest version
-of dtrx on `its home page`_.
+dtrx 6.0 is copyright (c) 2006, 2007, 2008 `Brett Smith`_.  Feel free to
+send comments, bug reports, patches, and so on.  You can find the latest
+version of dtrx on `its home page`_.
 
 .. _`Brett Smith`: mailto:brettcsmith@brettcsmith.org
 .. _`its home page`: http://www.brettcsmith.org/2007/dtrx/

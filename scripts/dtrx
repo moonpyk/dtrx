@@ -22,6 +22,7 @@ import mimetypes
 import optparse
 import os
 import re
+import shutil
 import stat
 import subprocess
 import sys
@@ -31,9 +32,9 @@ import traceback
 
 from sets import Set
 
-VERSION = "5.0"
+VERSION = "6.0"
 VERSION_BANNER = """dtrx version %s
-Copyright (c) 2006, 2007 Brett Smith <brettcsmith@brettcsmith.org>
+Copyright (c) 2006, 2007, 2008 Brett Smith <brettcsmith@brettcsmith.org>
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the
@@ -121,6 +122,12 @@ class ExtractorError(Exception):
     pass
 
 
+class ExtractorUnusable(Exception):
+    pass
+
+
+EXTRACTION_ERRORS = (ExtractorError, ExtractorUnusable, OSError, IOError)
+
 class BaseExtractor(object):
     decoders = {'bzip2': 'bzcat', 'gzip': 'zcat', 'compress': 'zcat',
                 'lzma': 'lzcat'}
@@ -167,9 +174,14 @@ class BaseExtractor(object):
                 stdout = final_stdout
             else:
                 stdout = subprocess.PIPE
-            processes.append(subprocess.Popen(command, stdin=stdin,
-                                              stdout=stdout,
-                                              stderr=subprocess.PIPE))
+            try:
+                processes.append(subprocess.Popen(command, stdin=stdin,
+                                                  stdout=stdout,
+                                                  stderr=subprocess.PIPE))
+            except OSError, error:
+                if error.errno == errno.ENOENT:
+                    raise ExtractorUnusable("could not run %s" % (command[0],))
+                raise
         exit_codes = [pipe.wait() for pipe in processes]
         self.archive.close()
         for index in range(last_pipe):
@@ -230,9 +242,9 @@ class BaseExtractor(object):
             self.archive.seek(0, 0)
             self.extract_archive()
             self.check_contents()
-        except ExtractorError:
+        except EXTRACTION_ERRORS:
             os.chdir(old_path)
-            subprocess.call(['rm', '-rf', self.target])
+            shutil.rmtree(self.target, ignore_errors=True)
             raise
         os.chdir(old_path)
 
@@ -248,6 +260,7 @@ class BaseExtractor(object):
     
 
 class CompressionExtractor(BaseExtractor):
+    file_type = 'compressed file'
     name_checker = FilenameChecker
 
     def basename(self):
@@ -269,7 +282,7 @@ class CompressionExtractor(BaseExtractor):
             raise ExtractorError("cannot extract here: %s" % (error.strerror,))
         try:
             self.run_pipes(output_fd)
-        except ExtractorError:
+        except EXTRACTION_ERRORS:
             os.close(output_fd)
             os.unlink(self.target)
             raise
@@ -277,6 +290,8 @@ class CompressionExtractor(BaseExtractor):
         
 
 class TarExtractor(BaseExtractor):
+    file_type = 'tar file'
+
     def get_filenames(self):
         self.pipe(['tar', '-t'], "listing")
         return BaseExtractor.get_filenames(self)
@@ -287,6 +302,8 @@ class TarExtractor(BaseExtractor):
         
         
 class CpioExtractor(BaseExtractor):
+    file_type = 'cpio file'
+
     def get_filenames(self):
         self.pipe(['cpio', '-t'], "listing")
         return BaseExtractor.get_filenames(self)
@@ -298,6 +315,8 @@ class CpioExtractor(BaseExtractor):
 
 
 class RPMExtractor(CpioExtractor):
+    file_type = 'RPM'
+
     def prepare(self):
         self.pipe(['rpm2cpio', '-'], "rpm2cpio")
 
@@ -320,6 +339,8 @@ class RPMExtractor(CpioExtractor):
 
 
 class DebExtractor(TarExtractor):
+    file_type = 'Debian package'
+
     def prepare(self):
         self.pipe(['ar', 'p', self.filename, 'data.tar.gz'],
                   "data.tar.gz extraction")
@@ -347,6 +368,8 @@ class DebMetadataExtractor(DebExtractor):
 
 
 class GemExtractor(TarExtractor):
+    file_type = 'Ruby gem'
+
     def prepare(self):
         self.pipe(['tar', '-xO', 'data.tar.gz'], "data.tar.gz extraction")
         self.pipe(['zcat'], "data.tar.gz decompression")
@@ -357,6 +380,8 @@ class GemExtractor(TarExtractor):
 
 
 class GemMetadataExtractor(CompressionExtractor):
+    file_type = 'Ruby gem'
+
     def prepare(self):
         self.pipe(['tar', '-xO', 'metadata.gz'], "metadata.gz extraction")
         self.pipe(['zcat'], "metadata.gz decompression")
@@ -383,6 +408,8 @@ class NoPipeExtractor(BaseExtractor):
 
 
 class ZipExtractor(NoPipeExtractor):
+    file_type = 'Zip file'
+
     def get_filenames(self):
         self.pipe(['zipinfo', '-1', self.filename], "listing")
         return BaseExtractor.get_filenames(self)
@@ -393,6 +420,7 @@ class ZipExtractor(NoPipeExtractor):
 
 
 class SevenExtractor(NoPipeExtractor):
+    file_type = '7z file'
     border_re = re.compile('^[- ]+$')
 
     def get_filenames(self):
@@ -416,6 +444,7 @@ class SevenExtractor(NoPipeExtractor):
         
 
 class CABExtractor(NoPipeExtractor):
+    file_type = 'CAB archive'
     border_re = re.compile(r'^[-\+]+$')
 
     def get_filenames(self):
@@ -780,7 +809,7 @@ class BaseAction(object):
     def report(self, function, *args):
         try:
             error = function(*args)
-        except (ExtractorError, IOError, OSError), exception:
+        except EXTRACTION_ERRORS, exception:
             error = str(exception)
             logger.debug(''.join(traceback.format_exception(*sys.exc_info())))
         return error
@@ -813,6 +842,7 @@ class ExtractionAction(BaseAction):
 class ListAction(BaseAction):
     def __init__(self, options, filenames):
         BaseAction.__init__(self, options, filenames)
+        self.count = 0
 
     def get_list(self, extractor):
         # Note: The reason I'm getting all the filenames up front is
@@ -823,14 +853,14 @@ class ListAction(BaseAction):
         self.filelist = list(extractor.get_filenames())
 
     def show_list(self, filename):
+        self.count += 1
         if len(self.filenames) != 1:
-            if filename != self.filenames[0]:
+            if self.count > 1:
                 print
             print "%s:" % (filename,)
         print '\n'.join(self.filelist)
 
     def run(self, filename, extractor):
-        self.current_filename = filename
         return (self.report(self.get_list, extractor) or
                 self.report(self.show_list, filename))
 
@@ -909,21 +939,24 @@ class ExtractorApplication(object):
             return "cannot extract a directory"
 
     def try_extractors(self, filename, builder):
-        last_error = "could not find a way to extract this"
-        while True:
-            try:
-                extractor = builder.next()
-            except StopIteration:
-                return last_error
-            except (IOError, OSError, ExtractorError), error:
-                return str(error)
+        errors = []
+        for extractor in builder:
             error = self.action.run(filename, extractor)
             if error:
-                logger.info("%s: %s" % (filename, error))
-                last_error = error
+                errors.append((extractor.file_type, extractor.encoding, error))
             else:
                 self.recurse(filename, extractor, self.action)
                 return
+        logger.error("could not handle %s" % (filename,))
+        if not errors:
+            logger.error("not a known archive type")
+            return True
+        for file_type, encoding, error in errors:
+            message = ["treating as", file_type, "failed:", error]
+            if encoding:
+                message.insert(1, "%s-encoded" % (encoding,))
+            logger.error(' '.join(message))
+        return True
         
     def run(self):
         if self.options.show_list:
@@ -939,7 +972,8 @@ class ExtractorApplication(object):
                 error = (self.check_file(filename) or
                          self.try_extractors(filename, builder.get_extractor()))
                 if error:
-                    logger.error("%s: %s" % (filename, error))
+                    if error != True:
+                        logger.error("%s: %s" % (filename, error))
                     self.failures.append(filename)
                 else:
                     self.successes.append(filename)

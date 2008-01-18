@@ -424,7 +424,7 @@
 - name: non-archive error
   filenames: /dev/null
   error: true
-  grep: "could not find a way to extract this"
+  grep: "not a known archive type"
 
 - name: no such file error
   filenames: nonexistent-file.tar.gz
