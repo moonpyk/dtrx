@@ -529,7 +529,8 @@ class OverwriteHandler(BaseHandler):
 
     def organize(self):
         self.target = self.extractor.basename()
-        shutil.rmtree(self.target)
+        if os.path.isdir(self.target):
+            shutil.rmtree(self.target)
         os.rename(self.extractor.target, self.target)
         
 
