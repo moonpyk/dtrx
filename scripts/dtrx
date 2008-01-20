@@ -197,11 +197,18 @@ class BaseExtractor(object):
     def prepare(self):
         pass
 
-    def check_included_archives(self, filenames):
-        for filename in filenames:
-            if (ExtractorBuilder.try_by_mimetype(filename) or
-                ExtractorBuilder.try_by_extension(filename)):
-                self.included_archives.append(filename)
+    def check_included_archives(self):
+        if (self.content_name is None) or (not self.content_name.endswith('/')):
+            self.included_root = './'
+        else:
+            self.included_root = self.content_name
+        start_index = len(self.included_root)
+        for path, dirname, filenames in os.walk(self.included_root):
+            path = path[start_index:]
+            for filename in filenames:
+                if (ExtractorBuilder.try_by_mimetype(filename) or
+                    ExtractorBuilder.try_by_extension(filename)):
+                    self.included_archives.append(os.path.join(path, filename))
 
     def check_contents(self):
         filenames = os.listdir('.')
@@ -217,7 +224,7 @@ class BaseExtractor(object):
                 self.content_name += '/'
         else:
             self.content_type = BOMB
-        self.check_included_archives(filenames)
+        self.check_included_archives()
 
     def basename(self):
         pieces = os.path.basename(self.filename).split('.')
@@ -334,7 +341,7 @@ class RPMExtractor(CpioExtractor):
         return '.'.join(pieces)
 
     def check_contents(self):
-        self.check_included_archives(os.listdir('.'))
+        self.check_included_archives()
         self.content_type = BOMB
 
 
@@ -356,7 +363,7 @@ class DebExtractor(TarExtractor):
         return '_'.join(pieces)
 
     def check_contents(self):
-        self.check_included_archives(os.listdir('.'))
+        self.check_included_archives()
         self.content_type = BOMB
 
 
@@ -375,7 +382,7 @@ class GemExtractor(TarExtractor):
         self.pipe(['zcat'], "data.tar.gz decompression")
 
     def check_contents(self):
-        self.check_included_archives(os.listdir('.'))
+        self.check_included_archives()
         self.content_type = BOMB
 
 
@@ -563,6 +570,7 @@ class MatchHandler(BaseHandler):
             os.rmdir(self.extractor.target)
         else:
             os.rename(self.extractor.target, self.target)
+        self.extractor.included_root = '.'
 
 
 class EmptyHandler(object):
@@ -926,8 +934,8 @@ class ExtractorApplication(object):
         if self.options.recursion_policy.ok_to_recurse():
             for filename in archives:
                 tail_path, basename = os.path.split(filename)
-                directory = os.path.join(self.current_directory,
-                                         action.target, tail_path)
+                directory = os.path.join(self.current_directory, action.target,
+                                         extractor.included_root, tail_path)
                 self.archives.setdefault(directory, []).append(basename)
 
     def check_file(self, filename):

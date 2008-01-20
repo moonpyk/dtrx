@@ -405,6 +405,51 @@
     extract $1
     extract $1 .1
 
+- name: recursion in subdirectories here
+  filenames: test-deep-recursion.tar
+  options: ""
+  input: |
+    h
+    o
+  grep: "contains 2"
+  baseline: |
+    tar -xf $1
+    cd subdir
+    zcat test-text.gz > test-text
+    cd subsubdir
+    zcat test-text.gz > test-text
+
+- name: recursion in subdirectories with rename
+  filenames: test-deep-recursion.tar
+  options: ""
+  input: |
+    r
+    o
+  grep: "contains 2"
+  baseline: |
+    tar -xf $1
+    mv subdir test-deep-recursion
+    cd test-deep-recursion
+    zcat test-text.gz > test-text
+    cd subsubdir
+    zcat test-text.gz > test-text
+
+- name: recursion in subdirectories inside new dir
+  filenames: test-deep-recursion.tar
+  options: ""
+  input: |
+    i
+    o
+  grep: "contains 2"
+  baseline: |
+    mkdir test-deep-recursion
+    cd test-deep-recursion
+    tar -xf ../$1
+    cd subdir
+    zcat test-text.gz > test-text
+    cd subsubdir
+    zcat test-text.gz > test-text
+
 - name: extracting file with bad extension
   filenames: test-1.23.bin
   prerun: cp ${1}test-1.23.tar.gz ${1}test-1.23.bin
@@ -447,6 +492,7 @@
   prerun: |
     touch unreadable-file.tar.gz
     chmod 000 unreadable-file.tar.gz
+  cleanup: rm -f unreadable-file.tar.gz
   error: true
   grep: "[Pp]ermission denied"
 
@@ -455,6 +501,7 @@
   prerun: |
     touch unreadable-file.zip
     chmod 000 unreadable-file.zip
+  cleanup: rm -f unreadable-file.zip
   error: true
   grep: "[Pp]ermission denied"
 
