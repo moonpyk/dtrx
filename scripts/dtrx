@@ -199,16 +199,16 @@ class BaseExtractor(object):
                     self.included_archives.append(os.path.join(path, filename))
 
     def check_contents(self):
-        filenames = os.listdir('.')
-        if not filenames:
+        self.contents = os.listdir('.')
+        if not self.contents:
             self.content_type = EMPTY
-        elif len(filenames) == 1:
-            if self.basename() == filenames[0]:
+        elif len(self.contents) == 1:
+            if self.basename() == self.contents[0]:
                 self.content_type = MATCHING_DIRECTORY
             else:
                 self.content_type = ONE_ENTRY
-            self.content_name = filenames[0]
-            if os.path.isdir(filenames[0]):
+            self.content_name = self.contents[0]
+            if os.path.isdir(self.contents[0]):
                 self.content_name += '/'
         else:
             self.content_type = BOMB
@@ -273,6 +273,8 @@ class CompressionExtractor(BaseExtractor):
     def extract(self):
         self.content_type = ONE_ENTRY_KNOWN
         self.content_name = self.basename()
+        self.contents = None
+        self.included_root = './'
         try:
             output_fd, self.target = tempfile.mkstemp(prefix='.dtrx-', dir='.')
         except (OSError, IOError), error:
@@ -815,6 +817,10 @@ class ExtractionAction(BaseAction):
     handlers = [FlatHandler, OverwriteHandler, MatchHandler, EmptyHandler,
                 BombHandler]
 
+    def __init__(self, options, filenames):
+        BaseAction.__init__(self, options, filenames)
+        self.did_print = False
+
     def get_handler(self, extractor):
         if extractor.content_type == ONE_ENTRY:
             self.options.one_entry_policy.prep(self.current_filename,
@@ -825,11 +831,41 @@ class ExtractionAction(BaseAction):
                 self.current_handler = handler(extractor, self.options)
                 break
 
+    def show_extraction(self, extractor):
+        if self.options.log_level > logging.INFO:
+            return
+        elif self.did_print:
+            print
+        else:
+            self.did_print = True
+        print "%s:" % (self.current_filename,)
+        if extractor.contents is None:
+            print self.current_handler.target
+            return
+        if self.current_handler.target == '.':
+            filenames = extractor.contents
+            filenames.sort(reverse=True)
+        else:
+            filenames = [self.current_handler.target]
+        pathjoin = os.path.join
+        isdir = os.path.isdir
+        while filenames:
+            filename = filenames.pop()
+            if isdir(filename):
+                print "%s/" % (filename,)
+                new_filenames = os.listdir(filename)
+                new_filenames.sort(reverse=True)
+                filenames.extend([pathjoin(filename, new_filename)
+                                  for new_filename in new_filenames])
+            else:
+                print filename
+
     def run(self, filename, extractor):
         self.current_filename = filename
         error = (self.report(extractor.extract) or
                  self.report(self.get_handler, extractor) or
-                 self.report(self.current_handler.handle))
+                 self.report(self.current_handler.handle) or
+                 self.report(self.show_extraction, extractor))
         if not error:
             self.target = self.current_handler.target
         return error
@@ -922,16 +958,17 @@ class ExtractorApplication(object):
         self.options, filenames = parser.parse_args(arguments)
         if not filenames:
             parser.error("you did not list any archives")
+        # This makes WARNING is the default.
+        self.options.log_level = (10 * (self.options.quiet -
+                                        self.options.verbose))
         self.options.one_entry_policy = OneEntryPolicy(self.options)
         self.options.recursion_policy = RecursionPolicy(self.options)
         self.archives = {os.path.realpath(os.curdir): filenames}
 
     def setup_logger(self):
-        # WARNING is the default.
-        log_level = (10 * (self.options.quiet - self.options.verbose))
-        logging.getLogger().setLevel(log_level)
+        logging.getLogger().setLevel(self.options.log_level)
         handler = logging.StreamHandler()
-        handler.setLevel(log_level)
+        handler.setLevel(self.options.log_level)
         formatter = logging.Formatter("dtrx: %(levelname)s: %(message)s")
         handler.setFormatter(formatter)
         logger.addHandler(handler)
@@ -985,7 +1022,6 @@ class ExtractorApplication(object):
             self.current_directory, self.filenames = self.archives.popitem()
             os.chdir(self.current_directory)
             for filename in self.filenames:
-                logger.info("handling %s" % (filename,))
                 builder = ExtractorBuilder(filename, self.options)
                 error = (self.check_file(filename) or
                          self.try_extractors(filename, builder.get_extractor()))
@@ -994,7 +1030,6 @@ class ExtractorApplication(object):
                         logger.error("%s: %s" % (filename, error))
                     self.failures.append(filename)
                 else:
-                    logger.info("finished handling %s" % (filename,))
                     self.successes.append(filename)
             self.options.one_entry_policy.permanent_policy = EXTRACT_WRAP
         if self.failures:

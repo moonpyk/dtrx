@@ -541,3 +541,16 @@
     for i in $(seq 1 10); do touch test-text.$i; done
   filenames: ../test-text.gz
   grep: "WARNING: extracting"
+
+- name: output filenames with -v
+  options: -v -n
+  filenames: test-onedir.tar.gz test-text.gz
+  output: |
+    test-onedir.tar.gz:
+    test-onedir/
+    test-onedir/test/
+    test-onedir/test/foobar
+    test-onedir/test/quux
+    
+    test-text.gz:
+    test-text
