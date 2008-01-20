@@ -1,0 +1,79 @@
+Changes in dtrx
+===============
+
+Version 6.0
+-----------
+
+New features
+~~~~~~~~~~~~
+
+ * When you specify -v at the command line, dtrx will display the files it
+   extracts, much like tar.
+
+ * When dtrx prompts you about how to handle recursive archives, you now
+   have the option of listing what those archives before making a decision.
+
+ * dtrx will now provide more information about why a particular extraction
+   attempt failed.  It will show you error messages from all the attempts
+   it made, rather than only the last error it got.  It will also detect
+   and warn you when one of the underlying extraction tools, like
+   cabextract, cannot be found.
+
+ * dtrx does a better job of cleaning up after itself.  It wouldn't always
+   clean up temporary files after certain errors; that has been fixed.  It
+   also catches SIGINT and SIGTERM and cleans up before finishing
+   execution.
+
+Bug fixes
+~~~~~~~~~
+
+ * Version 5.0 introduced a regression such that dtrx would not offer to
+   extract recursive archives that were hidden under subdirectories.
+   Version 6.0 fixes that.
+
+ * dtrx would not properly extract recursive archives when the original
+   archive contained a single directory.  This has been fixed.
+
+Version 5.1
+-----------
+
+Bug fixes
+~~~~~~~~~
+
+ * Version 5.0 did not work with Python 2.3; it used a new language
+   feature.  This release fixes that.
+
+Version 5.0
+-----------
+
+New features
+~~~~~~~~~~~~
+
+ * dtrx can now extract Ruby gems, 7z archives, and Microsoft Cabinet
+   archives.  It can also handle files compressed with lzma, and extract
+   the metadata from Debian packages and Ruby gems.
+
+ * dtrx will now use several strategies to try to figure out what kind of
+   file you have, and extract it accordingly.  If one doesn't work, it'll
+   try something else if it can.
+
+ * dtrx now displays more helpful errors when things go wrong.
+
+ * Previous versions of dtrx would look at what files were included in an
+   archive, and then make a decision about how to extract it.  Now, it
+   always extracts files to a temporary directory, and figures out what to
+   do with that directory afterward.  This should be slightly faster and
+   nicer to the system.
+
+Version 4.0
+-----------
+
+New features
+~~~~~~~~~~~~
+
+ * dtrx is now interactive.  If the archive only contains one item, or
+   contains other archives, dtrx will ask you how you would like to handle
+   it.  You can turn these questions off the the -n option.
+
+ * There is a new -l option, which simply lists the archive's contents
+   rather than extracting them.

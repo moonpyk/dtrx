@@ -56,4 +56,18 @@ Just copy ``scripts/dtrx`` to a location that's convenient for you.  If
 you'd like to install the program system-wide, you can run the following as
 root or equivalent::
 
-   python setup.py install
+   python setup.py install --prefix=/usr/local
+
+Running Tests
+-------------
+
+dtrx comes with a suite of tests that are designed to ensure it's running
+properly.  If you'd like, you can run these tests on your own system.
+Simply run the following command from the dtrx source directory::
+
+   python tests/compare.py
+
+If everything's in order, all the tests should pass.  Note that some of
+them will fail if some of the programs listed above aren't installed on
+your system.  Many of the tests will fail if for some reason you're missing
+the very common commands, like tar and zcat.

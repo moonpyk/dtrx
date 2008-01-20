@@ -54,12 +54,12 @@ dtrx supports a number of options to mandate specific behavior:
    contents.
 
 -q, --quiet
-   Suppress warning messages.  Listing this option twice will cause the
-   dtrx to be silent if at all possible.
+   Suppress warning messages.  Listing this option twice will cause dtrx to
+   be silent.
 
 -v, --verbose
-   Print more information about dtrx's behavior.  You can list this option
-   up to three times for more information.
+   Show the files that are being extracted.  Listing this option twice will
+   cause dtrx to print debugging information.
 
 --help
    Display basic help.
