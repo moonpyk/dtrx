@@ -192,6 +192,7 @@ class ExtractorTest(object):
         if self.baseline:
             return self.compare_results(actual)
         else:
+            self.clean()
             return self.show_status('Passed')
 
     def run(self):
