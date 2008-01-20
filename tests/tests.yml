@@ -554,3 +554,22 @@
     
     test-text.gz:
     test-text
+
+- name: output filenames with -v and -f
+  options: -nvf
+  directory: busydir
+  filenames: ../test-onedir.tar.gz
+  output: |
+    ../test-onedir.tar.gz:
+    test/
+    test/foobar
+    test/quux
+
+- name: list recursive archives
+  options: ""
+  filenames: test-deep-recursion.tar
+  input: |
+    r
+    l
+    n
+  grep: "^test-deep-recursion/subsubdir/test-text\.gz$"

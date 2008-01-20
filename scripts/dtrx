@@ -62,6 +62,7 @@ RECURSE_ALWAYS = 1
 RECURSE_ONCE = 2
 RECURSE_NOT_NOW = 3
 RECURSE_NEVER = 4
+RECURSE_LIST = 5
 
 mimetypes.encodings_map.setdefault('.bz2', 'bzip2')
 mimetypes.encodings_map.setdefault('.lzma', 'lzma')
@@ -560,7 +561,7 @@ class MatchHandler(BaseHandler):
             os.rmdir(self.extractor.target)
         else:
             os.rename(self.extractor.target, self.target)
-        self.extractor.included_root = '.'
+        self.extractor.included_root = './'
 
 
 class EmptyHandler(object):
@@ -629,13 +630,14 @@ class OneEntryPolicy(BasePolicy):
 
 class RecursionPolicy(BasePolicy):
     answers = {'o': RECURSE_ONCE, 'a': RECURSE_ALWAYS, 'n': RECURSE_NOT_NOW,
-               'v': RECURSE_NEVER, '': RECURSE_NOT_NOW}
+               'v': RECURSE_NEVER, 'l': RECURSE_LIST, '': RECURSE_NOT_NOW}
     choices = ["You can:",
                " * Always extract included archives",
                " * extract included archives this Once",
                " * choose Not to extract included archives",
-               " * neVer extract included archives"]
-    prompt = "What do you want to do?  (a/o/N/v) "
+               " * neVer extract included archives",
+               " * List included archives"]
+    prompt = "What do you want to do?  (a/o/N/v/l) "
 
     def __init__(self, options):
         BasePolicy.__init__(self, options)
@@ -644,8 +646,8 @@ class RecursionPolicy(BasePolicy):
         elif options.recursive:
             self.permanent_policy = RECURSE_ALWAYS
 
-    def prep(self, current_filename, included_archives):
-        archive_count = len(included_archives)
+    def prep(self, current_filename, target, extractor):
+        archive_count = len(extractor.included_archives)
         if (self.permanent_policy is not None) or (archive_count == 0):
             self.current_policy = self.permanent_policy or RECURSE_NOT_NOW
             return
@@ -654,8 +656,19 @@ class RecursionPolicy(BasePolicy):
                         (current_filename, archive_count))
         else:
             question = ("%s contains another archive: %s." %
-                        (current_filename, included_archives[0]))
-        self.current_policy = self.ask_question(question)
+                        (current_filename, extractor.included_archives[0]))
+        if target == '.':
+            target = ''
+        included_root = extractor.included_root
+        if included_root == './':
+            included_root = ''
+        while True:
+            self.current_policy = self.ask_question(question)
+            if self.current_policy != RECURSE_LIST:
+                break
+            print ("\n%s\n" %
+                   '\n'.join([os.path.join(target, included_root, filename)
+                              for filename in extractor.included_archives]))
         if self.current_policy in (RECURSE_ALWAYS, RECURSE_NEVER):
             self.permanent_policy = self.current_policy
 
@@ -975,10 +988,9 @@ class ExtractorApplication(object):
         logger.debug("logger is set up")
 
     def recurse(self, filename, extractor, action):
-        archives = extractor.included_archives
-        self.options.recursion_policy.prep(filename, archives)
+        self.options.recursion_policy.prep(filename, action.target, extractor)
         if self.options.recursion_policy.ok_to_recurse():
-            for filename in archives:
+            for filename in extractor.included_archives:
                 tail_path, basename = os.path.split(filename)
                 directory = os.path.join(self.current_directory, action.target,
                                          extractor.included_root, tail_path)
