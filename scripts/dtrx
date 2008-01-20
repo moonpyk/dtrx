@@ -855,9 +855,11 @@ class ExtractionAction(BaseAction):
         if extractor.contents is None:
             print self.current_handler.target
             return
+        def reverser(x, y):
+            return cmp(y, x)
         if self.current_handler.target == '.':
             filenames = extractor.contents
-            filenames.sort(reverse=True)
+            filenames.sort(reverser)
         else:
             filenames = [self.current_handler.target]
         pathjoin = os.path.join
@@ -867,7 +869,7 @@ class ExtractionAction(BaseAction):
             if isdir(filename):
                 print "%s/" % (filename,)
                 new_filenames = os.listdir(filename)
-                new_filenames.sort(reverse=True)
+                new_filenames.sort(reverser)
                 filenames.extend([pathjoin(filename, new_filename)
                                   for new_filename in new_filenames])
             else:
