@@ -17,12 +17,14 @@
 # with this program; if not, see <http://www.gnu.org/licenses/>.
 
 import errno
+import glob
 import logging
 import mimetypes
 import optparse
 import os
 import re
 import shutil
+import signal
 import stat
 import subprocess
 import sys
@@ -30,7 +32,7 @@ import tempfile
 import textwrap
 import traceback
 
-from sets import Set
+from sets import Set as set
 
 VERSION = "6.0"
 VERSION_BANNER = """dtrx version %s
@@ -66,20 +68,6 @@ mimetypes.encodings_map.setdefault('.lzma', 'lzma')
 mimetypes.types_map.setdefault('.gem', 'application/x-ruby-gem')
 
 logger = logging.getLogger('dtrx-log')
-
-def run_command(command, description, stdout=None, stderr=None, stdin=None):
-    process = subprocess.Popen(command, stdin=stdin, stdout=stdout,
-                               stderr=stderr)
-    status = process.wait()
-    for pipe in (process.stdout, process.stderr):
-        try:
-            pipe.close()
-        except AttributeError:
-            pass
-    if status != 0:
-        return ("%s error: '%s' returned status code %s" %
-                (description, ' '.join(command), status))
-    return None
 
 class FilenameChecker(object):
     def __init__(self, original_name):
@@ -250,9 +238,11 @@ class BaseExtractor(object):
             self.extract_archive()
             self.check_contents()
         except EXTRACTION_ERRORS:
+            self.archive.close()
             os.chdir(old_path)
             shutil.rmtree(self.target, ignore_errors=True)
             raise
+        self.archive.close()
         os.chdir(old_path)
 
     def get_filenames(self):
@@ -539,11 +529,8 @@ class OverwriteHandler(BaseHandler):
 
     def organize(self):
         self.target = self.extractor.basename()
-        result = run_command(['rm', '-rf', self.target],
-                             "removing %s to overwrite" % (self.target,))
-        if result is None:
-            os.rename(self.extractor.target, self.target)
-        return result
+        shutil.rmtree(self.target)
+        os.rename(self.extractor.target, self.target)
         
 
 class MatchHandler(BaseHandler):
@@ -745,7 +732,7 @@ class ExtractorBuilder(object):
         return extractor(self.filename, encoding)
 
     def get_extractor(self):
-        tried_types = Set()
+        tried_types = set()
         # As smart as it is, the magic test can't go first, because at least
         # on my system it just recognizes gem files as tar files.  I guess
         # it's possible for the opposite problem to occur -- where the mimetype
@@ -875,10 +862,29 @@ class ListAction(BaseAction):
 
 class ExtractorApplication(object):
     def __init__(self, arguments):
+        for signal_num in (signal.SIGINT, signal.SIGTERM):
+            signal.signal(signal_num, self.abort)
         self.parse_options(arguments)
         self.setup_logger()
         self.successes = []
         self.failures = []
+
+    def abort(self, signal_num, frame):
+        signal.signal(signal_num, signal.SIG_IGN)
+        print
+        logger.debug("got signal %s; cleaning up" % (signal_num,))
+        clean_targets = set([os.path.realpath('.')])
+        if hasattr(self, 'current_directory'):
+            clean_targets.add(os.path.realpath(self.current_directory))
+        for directory in clean_targets:
+            os.chdir(directory)
+            for path in glob.glob('.dtrx-*'):
+                try:
+                    os.unlink(path)
+                except OSError, error:
+                    if error.errno == errno.EISDIR:
+                        shutil.rmtree(path, ignore_errors=True)
+        sys.exit(1)
 
     def parse_options(self, arguments):
         parser = optparse.OptionParser(
