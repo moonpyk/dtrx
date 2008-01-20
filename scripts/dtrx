@@ -872,6 +872,8 @@ class ExtractorApplication(object):
     def abort(self, signal_num, frame):
         signal.signal(signal_num, signal.SIG_IGN)
         print
+        logger.debug("traceback:\n" +
+                     ''.join(traceback.format_stack(frame)).rstrip())
         logger.debug("got signal %s; cleaning up" % (signal_num,))
         clean_targets = set([os.path.realpath('.')])
         if hasattr(self, 'current_directory'):
