@@ -71,11 +71,23 @@ mimetypes.types_map.setdefault('.gem', 'application/x-ruby-gem')
 logger = logging.getLogger('dtrx-log')
 
 class FilenameChecker(object):
+    free_func = os.open
+    free_args = (os.O_CREAT | os.O_EXCL,)
+    free_close = os.close
+
     def __init__(self, original_name):
         self.original_name = original_name
 
     def is_free(self, filename):
-        return not os.path.exists(filename)
+        try:
+            result = self.free_func(filename, *self.free_args)
+        except OSError, error:
+            if error.errno == errno.EEXIST:
+                return False
+            raise
+        if self.free_close:
+            self.free_close(result)
+        return True
 
     def create(self):
         fd, filename = tempfile.mkstemp(prefix=self.original_name + '.',
@@ -84,8 +96,6 @@ class FilenameChecker(object):
         return filename
 
     def check(self):
-        if self.is_free(self.original_name):
-            return self.original_name
         for suffix in [''] + ['.%s' % (x,) for x in range(1, 10)]:
             filename = '%s%s' % (self.original_name, suffix)
             if self.is_free(filename):
@@ -94,14 +104,9 @@ class FilenameChecker(object):
 
 
 class DirectoryChecker(FilenameChecker):
-    def is_free(self, filename):
-        try:
-            os.mkdir(filename)
-        except OSError, error:
-            if error.errno == errno.EEXIST:
-                return False
-            raise
-        return True
+    free_func = os.mkdir
+    free_args = ()
+    free_close = None
 
     def create(self):
         return tempfile.mkdtemp(prefix=self.original_name + '.', dir='.')
