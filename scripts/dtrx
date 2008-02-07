@@ -694,7 +694,7 @@ class ExtractorBuilder(object):
 
     mimetype_map = {}
     for mapping in (('tar', 'x-tar'),
-                    ('zip', 'x-msdos-program', 'zip'),
+                    ('zip', 'zip'),
                     ('deb', 'x-debian-package'),
                     ('rpm', 'x-redhat-package-manager', 'x-rpm'),
                     ('cpio', 'x-cpio'),
@@ -710,7 +710,7 @@ class ExtractorBuilder(object):
     for mapping in (('deb', 'Debian binary package'),
                     ('cpio', 'cpio archive'),
                     ('tar', 'POSIX tar archive'),
-                    ('zip', 'Zip archive'),
+                    ('zip', '(Zip|ZIP self-extracting) archive'),
                     ('rpm', 'RPM'),
                     ('7z', '7-zip archive'),
                     ('cab', 'Microsoft Cabinet archive')):
@@ -727,7 +727,7 @@ class ExtractorBuilder(object):
     for mapping in (('tar', 'bzip2', 'tar.bz2'),
                     ('tar', 'gzip', 'tar.gz', 'tgz'),
                     ('tar', None, 'tar'),
-                    ('zip', None, 'zip', 'exe'),
+                    ('zip', None, 'zip'),
                     ('deb', None, 'deb'),
                     ('rpm', None, 'rpm'),
                     ('cpio', None, 'cpio'),
