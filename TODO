@@ -1,5 +1,33 @@
+-*- text -*-
+
 To do:
-* Add ability to list included archives for recursive extraction
+
+* When there's partial success in extracting an archive, go ahead and use
+  the partial version.  To do this, when extracting, save the stderr of
+  everything that gets run, along with its status code.  Let the top-level
+  loop decide what to do with that information.  It should do this by
+  looking in the extraction directory/file and seeing if there's anything
+  actually there.  If there is, it should go ahead and keep it, and report
+  errors as warnings (including stderr).  Otherwise, it should treat it as
+  an unsuccessful extraction.
+
+* The text for when directory names don't match confused Paul.  Consider
+  alternatives.  He thinks it would be cool if the actual/expected
+  directory names aligned in the output; might need to do your own wrapping
+  for this.
+
+* When we list how many archives are in the file, show a count, along with
+  the number of regular files in the archive too.  "foo.tar contains 5
+  other archives, out of 81 files total."
+
+* When we extract a compressed file, check to see if it itself is an
+  archive.  Follow all the usual rules for recursive extraction when we do
+  this.
+
+* It seems like when you extract an archive that only has one file, with
+  -f, you still get prompted about what to do with it.  -f should always
+  assume that everything gets extracted in the current directory.  Track
+  this bug down.
 
 Things which I have a use case/anti-use case for:
 * Support pisi packages (http://paketler.pardus.org.tr/pardus-2007/)
