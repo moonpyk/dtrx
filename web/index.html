@@ -1,0 +1,140 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Strict//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+
+<html><head><title>dtrx: Intelligent archive extraction</title>
+<link rel="stylesheet" href="common.css">
+</head>
+<body>
+<h1>dtrx: Intelligent archive extraction</h1>
+
+<h2>Introduction</h2>
+
+<p><span class="pname">dtrx</span> stands for &ldquo;Do The Right
+Extraction.&rdquo; It's a tool for Unix-like systems that takes all the
+hassle out of extracting archives.  Here's an example of how you use
+it:</p>
+
+<pre>$ dtrx linux-2.6.10.tar.bz2</pre>
+
+<p>That's basically the same thing as:</p>
+
+<pre>$ tar -jxf linux-2.6.10.tar.bz2</pre>
+
+<p>But there's more to it than that.  You know those really annoying files
+that don't put everything in a dedicated directory, and have the
+permissions all wrong?</p>
+
+<pre>$ tar -zvxf random-tarball.tar.gz
+foo
+bar
+data/
+data/text
+$ cd data/
+cd: permission denied: data</pre>
+
+<p><span class="pname">dtrx</span> takes care of all those problems for
+you, too:</p>
+
+<pre>$ dtrx random-tarball.tar.gz
+$ cd random-tarball/data
+$ cat text
+This all works properly.</pre>
+
+<p><span class="pname">dtrx</span> is simple and powerful.  Just use the
+same command for all your archive files, and they'll never frustrate you
+again.</p>
+
+<h2>Features</h2>
+
+<ul>
+
+<li><strong>Handles many archive types</strong>: You only need to remember
+one simple command to extract
+
+<span class="pname">tar</span>,
+<span class="pname">zip</span>,
+<span class="pname">cpio</span>,
+<span class="pname">deb</span>,
+<span class="pname">rpm</span>,
+<span class="pname">gem</span>,
+<span class="pname">7z</span>,
+<span class="pname">cab</span>,
+<span class="pname">gz</span>,
+<span class="pname">bz2</span>, and
+<span class="pname">lzma</span> files.
+
+If they have any extra compression, like <span
+class="pname">tar.bz2</span>, <span class="pname">dtrx</span> will take
+care of that for you, too.</li>
+
+<li><strong>Keeps everything organized</strong>: <span
+class="pname">dtrx</span> will make sure that archives are extracted into
+their own dedicated directories.</li>
+
+<li><strong>Sane permissions</strong>: <span class="pname">dtrx</span> makes
+sure you can read and write all the files you just extracted, while leaving
+the rest of the permissions intact.</li>
+
+<li><strong>Recursive extraction</strong>: <span class="pname">dtrx</span> can
+find archives inside the archive and extract those too.</li>
+
+</ul>
+
+<h2>Download</h2>
+
+<p><a href="dtrx-6.0.tar.gz">Download <span class="pname">dtrx</span>
+6.0</a>.  The SHA1 checksum for this file
+is <tt>dbe0211c90d6d03035f612fe31f96c825aa75274</tt>.  New features in this
+release include:</p>
+
+<ul>
+
+<li>When you specify <tt>-v</tt> at the command
+   line, <span class="pname">dtrx</span> will display the files it
+   extracts, much like <span class="pname">tar</span>.</li>
+
+<li>When <span class="pname">dtrx</span> prompts you about how to handle
+   recursive archives, you now have the option of listing what those
+   archives before making a decision.</li>
+
+<li><span class="pname">dtrx</span> will now provide more information about
+   why a particular extraction attempt failed.  It will show you error
+   messages from all the attempts it made, rather than only the last error
+   it got.  It will also detect and warn you when one of the underlying
+   extraction tools, like <span class="pname">cabextract</span>, cannot be
+   found.</li>
+
+<li><span class="pname">dtrx</span> does a better job of cleaning up after
+   itself.  It wouldn't always clean up temporary files after certain
+   errors; that has been fixed.  It also catches SIGINT and SIGTERM and
+   cleans up before finishing execution.</li>
+
+<li>Version 5.0 introduced a regression such
+   that <span class="pname">dtrx</span> would not offer to extract
+   recursive archives that were hidden under subdirectories.  Version 6.0
+   fixes that.</li>
+
+</ul>
+
+<h2>Requirements</h2>
+
+<p>If you have Python 2.4 or greater, this should work out of the box.  If
+you're stuck on Python 2.3, you can use this if you install the <a
+href="http://www.lysator.liu.se/~astrand/popen5/">subprocess module</a>.
+You'll need the usual tools for the archive types you want to extract: for
+example, if you're extracting <span class="pname">zip</span> files, you'll
+need <span class="pname">zipinfo</span> and <span
+class="pname">unzip</span>.</p>
+
+<h2>Installation</h2>
+
+<p>You can just put <span class="pname">scripts/dtrx</span> wherever is
+convenient for you, but if you want to install the program system-wide, you
+can also run the following command as root or equivalent:</p>
+
+<pre>python setup.py install</pre>
+
+<p>See the included <tt>INSTALL</tt> file for more information.</p>
+
+</body>
+</html>

@@ -1,0 +1,4 @@
+body { padding: 0 3em; }
+h1, h2, h3 { margin-left: -1em; }
+span.pname { font-family: monospace; }
+pre { margin-left: 2em; }
