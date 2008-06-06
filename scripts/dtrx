@@ -49,10 +49,13 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General
 Public License for more details.""" % (VERSION,)
 
 MATCHING_DIRECTORY = 1
-ONE_ENTRY = 2
+ONE_ENTRY_KNOWN = 2
 BOMB = 3
 EMPTY = 4
-ONE_ENTRY_KNOWN = 5
+ONE_ENTRY_FILE = 'file'
+ONE_ENTRY_DIRECTORY = 'directory'
+
+ONE_ENTRY_UNKNOWN = [ONE_ENTRY_FILE, ONE_ENTRY_DIRECTORY]
 
 EXTRACT_HERE = 1
 EXTRACT_WRAP = 2
@@ -213,8 +216,10 @@ class BaseExtractor(object):
         elif len(self.contents) == 1:
             if self.basename() == self.contents[0]:
                 self.content_type = MATCHING_DIRECTORY
+            elif os.path.isdir(self.contents[0]):
+                self.content_type = ONE_ENTRY_DIRECTORY
             else:
-                self.content_type = ONE_ENTRY
+                self.content_type = ONE_ENTRY_FILE
             self.content_name = self.contents[0]
             if os.path.isdir(self.contents[0]):
                 self.content_name += '/'
@@ -560,7 +565,7 @@ class OverwriteHandler(BaseHandler):
 class MatchHandler(BaseHandler):
     def can_handle(contents, options):
         return ((contents == MATCHING_DIRECTORY) or
-                ((contents == ONE_ENTRY) and
+                ((contents in ONE_ENTRY_UNKNOWN) and
                  options.one_entry_policy.ok_for_match()))
     can_handle = staticmethod(can_handle)
 
@@ -613,7 +618,7 @@ class BasePolicy(object):
             self.permanent_policy = None
 
     def ask_question(self, question):
-        question = textwrap.wrap(question) + self.choices
+        question = question + self.choices
         while True:
             print "\n".join(question)
             try:
@@ -638,9 +643,11 @@ class OneEntryPolicy(BasePolicy):
                " * extract it Here"]
     prompt = "What do you want to do?  (I/r/h) "
 
-    def prep(self, archive_filename, entry_name):
-        question = ("%s contains one entry: %s." %
-                    (archive_filename, entry_name))
+    def prep(self, archive_filename, extractor):
+        question = ["%s contains one %s, but it has a weird name." %
+                    (archive_filename, extractor.content_type)]
+        question.append(" Expected: " + extractor.basename())
+        question.append("   Actual: " + extractor.content_name)
         self.current_policy = (self.permanent_policy or
                                self.ask_question(question))
 
@@ -677,6 +684,7 @@ class RecursionPolicy(BasePolicy):
         else:
             question = ("%s contains another archive: %s." %
                         (current_filename, extractor.included_archives[0]))
+        question = textwrap.wrap(question)
         if target == '.':
             target = ''
         included_root = extractor.included_root
@@ -855,9 +863,9 @@ class ExtractionAction(BaseAction):
         self.did_print = False
 
     def get_handler(self, extractor):
-        if extractor.content_type == ONE_ENTRY:
+        if extractor.content_type in ONE_ENTRY_UNKNOWN:
             self.options.one_entry_policy.prep(self.current_filename,
-                                               extractor.content_name)
+                                               extractor)
         for handler in self.handlers:
             if handler.can_handle(extractor.content_type, self.options):
                 logger.debug("using %s handler" % (handler.__name__,))

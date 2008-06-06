@@ -2,14 +2,7 @@
 
 To do:
 
-* When there's partial success in extracting an archive, go ahead and use
-  the partial version.  To do this, when extracting, save the stderr of
-  everything that gets run, along with its status code.  Let the top-level
-  loop decide what to do with that information.  It should do this by
-  looking in the extraction directory/file and seeing if there's anything
-  actually there.  If there is, it should go ahead and keep it, and report
-  errors as warnings (including stderr).  Otherwise, it should treat it as
-  an unsuccessful extraction.
+* Everything is messed up when an archive contains one file.
 
 * The text for when directory names don't match confused Paul.  Consider
   alternatives.  He thinks it would be cool if the actual/expected

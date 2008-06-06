@@ -234,6 +234,7 @@
 - name: one directory extracted inside another (gz)
   options: ""
   filenames: test-onedir.tar.gz
+  grep: one directory
   input: i
   baseline: |
     mkdir test-onedir
@@ -299,22 +300,25 @@
   options: ""
   filenames: test-onefile.tar.gz
   input: i
+  grep: one file
   baseline: |
     mkdir test-onefile
     cd test-onefile
     tar -zxf ../$1
 
-- name: one file extracted with rename
+- name: one file extracted with rename, with Expected text
   options: ""
   filenames: test-onefile.tar.gz
   input: r
+  grep: "Expected: test-onefile"
   baseline: |
     tar -zxOf $1 >test-onefile
 
-- name: one file extracted here
+- name: one file extracted here, with Actual text
   options: ""
   filenames: test-onefile.tar.gz
   input: h
+  grep: "  Actual: test-text"
   baseline: |
     tar -zxf $1
 
@@ -330,7 +334,7 @@
 - name: one directory preceded by dot in the table
   filenames: test-dot-first-onedir.tar.gz
   options: ""
-  grep: "one entry: (./)?dir/"
+  grep: "Actual: (./)?dir/"
   input: h
   baseline: |
     tar -zxf $1
