@@ -573,3 +573,12 @@
     l
     n
   grep: "^test-deep-recursion/subsubdir/test-text\.gz$"
+
+- name: partly failed extraction
+  options: -n
+  filenames: test-tar-with-node.tar.gz
+  baseline: |
+    mkdir test-tar-with-node
+    cd test-tar-with-node
+    tar -zxf ../$1
+  grep: Cannot mknod

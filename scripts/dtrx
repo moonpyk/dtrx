@@ -138,6 +138,8 @@ class BaseExtractor(object):
         self.content_type = None
         self.content_name = None
         self.pipes = []
+        self.stderr = tempfile.TemporaryFile()
+        self.exit_codes = []
         try:
             self.archive = open(filename, 'r')
         except (IOError, OSError), error:
@@ -149,6 +151,12 @@ class BaseExtractor(object):
 
     def pipe(self, command, description="extraction"):
         self.pipes.append((command, description))
+
+    def first_bad_exit_code(self):
+        for index, code in enumerate(self.exit_codes):
+            if code != 0:
+                return index
+        return None
 
     def run_pipes(self, final_stdout=None):
         if not self.pipes:
@@ -171,23 +179,17 @@ class BaseExtractor(object):
             try:
                 processes.append(subprocess.Popen(command, stdin=stdin,
                                                   stdout=stdout,
-                                                  stderr=subprocess.PIPE))
+                                                  stderr=self.stderr))
             except OSError, error:
                 if error.errno == errno.ENOENT:
                     raise ExtractorUnusable("could not run %s" % (command[0],))
                 raise
-        exit_codes = [pipe.wait() for pipe in processes]
+        self.exit_codes = [pipe.wait() for pipe in processes]
         self.archive.close()
         for index in range(last_pipe):
             processes[index].stdout.close()
-            processes[index].stderr.close()
-        for index, status in enumerate(exit_codes):
-            if status != 0:
-                raise ExtractorError("%s error: '%s' returned status code %s" %
-                                     (self.pipes[index][1],
-                                      ' '.join(self.pipes[index][0]), status))
         self.archive = final_stdout
-    
+
     def prepare(self):
         pass
 
@@ -232,6 +234,19 @@ class BaseExtractor(object):
             pieces.pop()
         return '.'.join(pieces)
 
+    def check_success(self, got_output):
+        self.stderr.seek(0, 0)
+        if self.stderr.read(1):
+            self.stderr.seek(0, 0)
+            logger.warning(self.stderr.read(-1))
+        self.stderr.close()
+        error_index = self.first_bad_exit_code()
+        if (not got_output) and (error_index is not None):
+            command = ' '.join(self.pipes[error_index][0])
+            raise ExtractorError("%s error: '%s' returned status code %s" %
+                                 (self.pipes[error_index][1], command,
+                                  self.exit_codes[error_index]))
+        
     def extract(self):
         try:
             self.target = tempfile.mkdtemp(prefix='.dtrx-', dir='.')
@@ -243,6 +258,7 @@ class BaseExtractor(object):
             self.archive.seek(0, 0)
             self.extract_archive()
             self.check_contents()
+            self.check_success(self.content_type != EMPTY)
         except EXTRACTION_ERRORS:
             self.archive.close()
             os.chdir(old_path)
@@ -285,15 +301,14 @@ class CompressionExtractor(BaseExtractor):
             output_fd, self.target = tempfile.mkstemp(prefix='.dtrx-', dir='.')
         except (OSError, IOError), error:
             raise ExtractorError("cannot extract here: %s" % (error.strerror,))
+        self.run_pipes(output_fd)
+        os.close(output_fd)
         try:
-            self.run_pipes(output_fd)
+            self.check_success(os.stat(self.target)[stat.ST_SIZE] > 0)
         except EXTRACTION_ERRORS:
-            os.close(output_fd)
             os.unlink(self.target)
             raise
-        os.close(output_fd)
-        
-
+            
 class TarExtractor(BaseExtractor):
     file_type = 'tar file'
 
