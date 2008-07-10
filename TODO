@@ -4,23 +4,22 @@ To do:
 
 * Everything is messed up when an archive contains one file.
 
-* The text for when directory names don't match confused Paul.  Consider
-  alternatives.  He thinks it would be cool if the actual/expected
-  directory names aligned in the output; might need to do your own wrapping
-  for this.
-
 * When we list how many archives are in the file, show a count, along with
   the number of regular files in the archive too.  "foo.tar contains 5
   other archives, out of 81 files total."
 
-* When we extract a compressed file, check to see if it itself is an
-  archive.  Follow all the usual rules for recursive extraction when we do
-  this.
+* When we extract a compressed file (or just one file?), check to see if it
+  itself is an archive.  Follow all the usual rules for recursive
+  extraction when we do this.
 
 * It seems like when you extract an archive that only has one file, with
   -f, you still get prompted about what to do with it.  -f should always
   assume that everything gets extracted in the current directory.  Track
   this bug down.
+
+* Support InstallShield extraction with Unshield.
+
+* --expert mode, to trim down prompts?
 
 Things which I have a use case/anti-use case for:
 * Support pisi packages (http://paketler.pardus.org.tr/pardus-2007/)
