@@ -12,14 +12,10 @@ To do:
   itself is an archive.  Follow all the usual rules for recursive
   extraction when we do this.
 
-* It seems like when you extract an archive that only has one file, with
-  -f, you still get prompted about what to do with it.  -f should always
-  assume that everything gets extracted in the current directory.  Track
-  this bug down.
-
 * Support InstallShield extraction with Unshield.
 
-* --expert mode, to trim down prompts?
+* --expert mode: prompts don't show an explanation of what the options are,
+  unless you ask with ?.
 
 Things which I have a use case/anti-use case for:
 * Support pisi packages (http://paketler.pardus.org.tr/pardus-2007/)
