@@ -136,6 +136,7 @@ class BaseExtractor(object):
             raise ValueError("unrecognized encoding %s" % (encoding,))
         self.filename = os.path.realpath(filename)
         self.encoding = encoding
+        self.file_count = 0
         self.included_archives = []
         self.target = None
         self.content_type = None
@@ -203,6 +204,7 @@ class BaseExtractor(object):
             self.included_root = self.content_name
         start_index = len(self.included_root)
         for path, dirname, filenames in os.walk(self.included_root):
+            self.file_count += len(filenames)
             path = path[start_index:]
             for filename in filenames:
                 if (ExtractorBuilder.try_by_mimetype(filename) or
@@ -683,12 +685,9 @@ class RecursionPolicy(BasePolicy):
         if (self.permanent_policy is not None) or (archive_count == 0):
             self.current_policy = self.permanent_policy or RECURSE_NOT_NOW
             return
-        elif archive_count > 1:
-            question = ("%s contains %s other archive files." %
-                        (current_filename, archive_count))
-        else:
-            question = ("%s contains another archive: %s." %
-                        (current_filename, extractor.included_archives[0]))
+        question = (("%s contains %s other archive file(s), " +
+                     "out of %s files total.") %
+                    (current_filename, archive_count, extractor.file_count))
         question = textwrap.wrap(question)
         if target == '.':
             target = ''

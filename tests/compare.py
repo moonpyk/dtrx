@@ -165,9 +165,11 @@ class ExtractorTest(object):
         return None
 
     def grep_output(self, output):
-        if self.grep and (not re.search(self.grep, output, re.MULTILINE)):
+        if self.grep and (not re.search(self.grep.replace(' ', '\\s+'),
+                                        output, re.MULTILINE)):
             return "output did not match %s" % (self.grep)
-        elif self.antigrep and re.search(self.antigrep, output, re.MULTILINE):
+        elif self.antigrep and re.search(self.antigrep.replace(' ', '\\s+'),
+                                         output, re.MULTILINE):
             return "output matched antigrep %s" % (self.antigrep)
         return None
 
