@@ -643,6 +643,11 @@ class OneEntryPolicy(BasePolicy):
                " * extract it Here"]
     prompt = "What do you want to do?  (I/r/h) "
 
+    def __init__(self, options):
+        BasePolicy.__init__(self, options)
+        if options.flat:
+            self.permanent_policy = EXTRACT_HERE
+
     def prep(self, archive_filename, extractor):
         question = ["%s contains one %s, but it has a weird name." %
                     (archive_filename, extractor.content_type)]

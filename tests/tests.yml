@@ -586,3 +586,10 @@
     cd test-tar-with-node
     tar -zxf ../$1
   grep: Cannot mknod
+
+- name: flat extraction of one-file archive
+  directory: inside-dir
+  options: -f
+  filenames: ../test-onefile.tar.gz
+  baseline: tar -zxf $1
+  antigrep: "contains"
