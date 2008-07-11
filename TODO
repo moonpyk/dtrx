@@ -2,13 +2,6 @@
 
 To do:
 
-* Everything is messed up when an archive contains one file... but I forget
-  what I meant by this.
-
-* When we extract a compressed file (or just one file?), check to see if it
-  itself is an archive.  Follow all the usual rules for recursive
-  extraction when we do this.
-
 * Support InstallShield extraction with Unshield.
 
 * --expert mode: prompts don't show an explanation of what the options are,
