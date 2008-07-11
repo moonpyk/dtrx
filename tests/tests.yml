@@ -593,3 +593,14 @@
   filenames: ../test-onefile.tar.gz
   baseline: tar -zxf $1
   antigrep: "contains"
+
+- name: test recursive extraction of one archive
+  directory: inside-dir
+  options: ""
+  filenames: ../test-one-archive.tar.gz
+  baseline: |
+    tar -zxf $1
+    zcat test-text.gz >test-text
+  input: |
+    h
+    o

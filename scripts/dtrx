@@ -1025,9 +1025,17 @@ class ExtractorApplication(object):
         self.options.recursion_policy.prep(filename, action.target, extractor)
         if self.options.recursion_policy.ok_to_recurse():
             for filename in extractor.included_archives:
+                logger.debug("recursing with %s archive" %
+                             (extractor.content_type,))
                 tail_path, basename = os.path.split(filename)
-                directory = os.path.join(self.current_directory, action.target,
-                                         extractor.included_root, tail_path)
+                path_args = [self.current_directory, extractor.included_root,
+                             tail_path]
+                logger.debug("included root: %s" % (extractor.included_root,))
+                logger.debug("tail path: %s" % (tail_path,))
+                if os.path.isdir(action.target):
+                    logger.debug("action target: %s" % (action.target,))
+                    path_args.insert(1, action.target)
+                directory = os.path.join(*path_args)
                 self.archives.setdefault(directory, []).append(basename)
 
     def check_file(self, filename):
