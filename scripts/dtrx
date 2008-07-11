@@ -686,7 +686,7 @@ class RecursionPolicy(BasePolicy):
             self.current_policy = self.permanent_policy or RECURSE_NOT_NOW
             return
         question = (("%s contains %s other archive file(s), " +
-                     "out of %s files total.") %
+                     "out of %s file(s) total.") %
                     (current_filename, archive_count, extractor.file_count))
         question = textwrap.wrap(question)
         if target == '.':

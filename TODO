@@ -2,11 +2,8 @@
 
 To do:
 
-* Everything is messed up when an archive contains one file.
-
-* When we list how many archives are in the file, show a count, along with
-  the number of regular files in the archive too.  "foo.tar contains 5
-  other archives, out of 81 files total."
+* Everything is messed up when an archive contains one file... but I forget
+  what I meant by this.
 
 * When we extract a compressed file (or just one file?), check to see if it
   itself is an archive.  Follow all the usual rules for recursive

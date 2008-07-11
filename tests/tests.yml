@@ -415,7 +415,7 @@
   input: |
     h
     o
-  grep: "contains 2 other archive file\(s\), out of 2 files"
+  grep: "contains 2 other archive file\(s\), out of 2 file\(s\)"
   baseline: |
     tar -xf $1
     cd subdir
