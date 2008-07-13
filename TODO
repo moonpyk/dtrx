@@ -9,8 +9,6 @@ To do:
   itself is an archive.  Follow all the usual rules for recursive
   extraction when we do this.
 
-* Support InstallShield extraction with Unshield.
-
 * --expert mode: prompts don't show an explanation of what the options are,
   unless you ask with ?.
 

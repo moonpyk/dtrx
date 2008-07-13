@@ -16,6 +16,8 @@
 # You should have received a copy of the GNU General Public License along
 # with this program; if not, see <http://www.gnu.org/licenses/>.
 
+# Python 2.3 string methods: 'rfind', 'rindex', 'rjust', 'rstrip'
+
 import errno
 import glob
 import logging
@@ -494,6 +496,35 @@ class CABExtractor(NoPipeExtractor):
         self.run_pipes()
 
 
+class ShieldExtractor(NoPipeExtractor):
+    file_type = 'InstallShield archive'
+    prefix_re = re.compile(r'^\s+\d+\s+')
+    end_re = re.compile(r'^\s+-+\s+-+\s*$')
+
+    def get_filenames(self):
+        self.pipe(['unshield', 'l', self.filename], "listing")
+        self.run_pipes()
+        self.archive.seek(0, 0)
+        for line in self.archive:
+            if self.end_re.match(line):
+                break
+            else:
+                match = self.prefix_re.match(line)
+                if match:
+                    yield line[match.end():].rstrip('\n')
+        self.archive.close()
+
+    def extract_archive(self):
+        self.pipe(['unshield', 'x', self.filename])
+        self.run_pipes()
+
+    def basename(self):
+        result = NoPipeExtractor.basename(self)
+        if result.endswith('.hdr'):
+            result = result[:-4]
+        return result
+
+
 class BaseHandler(object):
     def __init__(self, extractor, options):
         self.extractor = extractor
@@ -717,7 +748,8 @@ class ExtractorBuilder(object):
                      'gem': (GemExtractor, GemMetadataExtractor),
                      'compress': (CompressionExtractor, None),
                      '7z': (SevenExtractor, None),
-                     'cab': (CABExtractor, None)}
+                     'cab': (CABExtractor, None),
+                     'shield': (ShieldExtractor, None)}
 
     mimetype_map = {}
     for mapping in (('tar', 'x-tar'),
@@ -727,7 +759,8 @@ class ExtractorBuilder(object):
                     ('cpio', 'x-cpio'),
                     ('gem', 'x-ruby-gem'),
                     ('7z', 'x-7z-compressed'),
-                    ('cab', 'x-cab')):
+                    ('cab', 'x-cab'),
+                    ('shield', 'x-cab')):
         for mimetype in mapping[1:]:
             if '/' not in mimetype:
                 mimetype = 'application/' + mimetype
@@ -740,7 +773,8 @@ class ExtractorBuilder(object):
                     ('zip', '(Zip|ZIP self-extracting) archive'),
                     ('rpm', 'RPM'),
                     ('7z', '7-zip archive'),
-                    ('cab', 'Microsoft Cabinet archive')):
+                    ('cab', 'Microsoft Cabinet archive'),
+                    ('shield', 'InstallShield CAB')):
         for pattern in mapping[1:]:
             magic_mime_map[re.compile(pattern)] = mapping[0]
     
@@ -763,7 +797,8 @@ class ExtractorBuilder(object):
                     ('compress', 'bzip2', 'bz2'),
                     ('compress', 'lzma', 'lzma'),
                     ('7z', None, '7z'),
-                    ('cab', None, 'cab', 'exe')):
+                    ('cab', None, 'cab', 'exe'),
+                    ('shield', None, 'cab', 'hdr')):
         for extension in mapping[2:]:
             extension_map.setdefault(extension, []).append(mapping[:2])
 

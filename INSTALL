@@ -39,6 +39,9 @@ gem archives
 Microsoft Cabinet archives
   cabextract
 
+InstallShield archives
+  unshield
+
 Files compressed with gzip or compress
   zcat
 
