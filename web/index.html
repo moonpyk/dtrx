@@ -60,8 +60,11 @@ one simple command to extract
 <span class="pname">7z</span>,
 <span class="pname">cab</span>,
 <span class="pname">gz</span>,
-<span class="pname">bz2</span>, and
-<span class="pname">lzma</span> files.
+<span class="pname">bz2</span>,
+<span class="pname">lzma</span>, and many kinds of
+<span class="pname">exe</span> files, including Microsoft Cabinet archives,
+InstallShield archives, and self-extracting <span class="pname">zip</span>
+files.
 
 If they have any extra compression, like <span
 class="pname">tar.bz2</span>, <span class="pname">dtrx</span> will take
@@ -82,43 +85,36 @@ find archives inside the archive and extract those too.</li>
 
 <h2>Download</h2>
 
-<p><a href="dtrx-6.0.tar.gz">Download <span class="pname">dtrx</span>
-6.0</a>.  The SHA1 checksum for this file
-is <tt>dbe0211c90d6d03035f612fe31f96c825aa75274</tt>.  New features in this
+<p><a href="dtrx-6.1.tar.gz">Download <span class="pname">dtrx</span>
+6.1</a>.  The SHA1 checksum for this file
+is <tt>2cd7c5e1ca2e83a942e5af58dceb0700063ce03d</tt>.  New features in this
 release include:</p>
 
 <ul>
 
-<li>When you specify <tt>-v</tt> at the command
-   line, <span class="pname">dtrx</span> will display the files it
-   extracts, much like <span class="pname">tar</span>.</li>
-
-<li>When <span class="pname">dtrx</span> prompts you about how to handle
-   recursive archives, you now have the option of listing what those
-   archives before making a decision.</li>
-
-<li><span class="pname">dtrx</span> will now provide more information about
-   why a particular extraction attempt failed.  It will show you error
-   messages from all the attempts it made, rather than only the last error
-   it got.  It will also detect and warn you when one of the underlying
-   extraction tools, like <span class="pname">cabextract</span>, cannot be
-   found.</li>
-
-<li><span class="pname">dtrx</span> does a better job of cleaning up after
-   itself.  It wouldn't always clean up temporary files after certain
-   errors; that has been fixed.  It also catches SIGINT and SIGTERM and
-   cleans up before finishing execution.</li>
-
-<li>Version 5.0 introduced a regression such
-   that <span class="pname">dtrx</span> would not offer to extract
-   recursive archives that were hidden under subdirectories.  Version 6.0
-   fixes that.</li>
+<li>Add support for InstallShield archives, using
+the <span class="pname">unshield</span> command.</li>
+<li>The wording of many of the interactive prompts has been adjusted
+to be clearer and provide more information to the user
+immediately.</li>
+<li><span class="pname">dtrx</span> 6.1 does a better job protecting
+against race conditions when extracting a single file.</li>
+<li>If you used the -f option, and extracted an archive that only contained
+one file or directory, <span class="pname">dtrx</span> 6.0 would still
+prompt you to ask how it should be
+extracted.  <span class="pname">dtrx</span> 6.1 fixes this, extracting the
+contents to the current directory as -f requires.</li>
+<li>Recursive extraction would not work well
+in <span class="pname">dtrx</span> 6.0 when the contents of the original
+archive were a single file.  This has been fixed
+in <span class="pname">dtrx</span> 6.1.</li>
 
 </ul>
 
 <p>If you would like to try the latest development version—or maybe do some
-development on it—you can check out the project's <a
-href="http://www.selenic.com/mercurial/wiki/">Mercurial</a> repository.  A
+work on it yourself—you can check out the
+project's <a href="http://www.selenic.com/mercurial/wiki/">Mercurial</a>
+repository.  A
 <a href="http://www.brettcsmith.org/2007/dtrx/dtrx/">web repository</a> is
 available, or you can just run:</p>
 
@@ -127,12 +123,14 @@ available, or you can just run:</p>
 <h2>Requirements</h2>
 
 <p>If you have Python 2.4 or greater, this should work out of the box.  If
-you're stuck on Python 2.3, you can use this if you install the <a
-href="http://www.lysator.liu.se/~astrand/popen5/">subprocess module</a>.
-You'll need the usual tools for the archive types you want to extract: for
-example, if you're extracting <span class="pname">zip</span> files, you'll
-need <span class="pname">zipinfo</span> and <span
-class="pname">unzip</span>.</p>
+you're stuck on Python 2.3, you can use this if you install
+the <a href="http://www.lysator.liu.se/~astrand/popen5/">subprocess
+module</a>.  You'll need the usual tools for the archive types you want to
+extract: for example, if you're extracting <span class="pname">zip</span>
+files, you'll need <span class="pname">zipinfo</span>
+and <span class="pname">unzip</span>.  See the INSTALL file included
+with <span class="pname">dtrx</span> for a complete list of necessary
+utilities.</p>
 
 <h2>Installation</h2>
 
