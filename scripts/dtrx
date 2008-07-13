@@ -797,7 +797,7 @@ class ExtractorBuilder(object):
                     ('compress', 'bzip2', 'bz2'),
                     ('compress', 'lzma', 'lzma'),
                     ('7z', None, '7z'),
-                    ('cab', None, 'cab', 'exe'),
+                    ('cab', None, 'cab'),
                     ('shield', None, 'cab', 'hdr')):
         for extension in mapping[2:]:
             extension_map.setdefault(extension, []).append(mapping[:2])
