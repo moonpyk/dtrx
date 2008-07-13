@@ -1,6 +1,33 @@
 Changes in dtrx
 ===============
 
+Version 6.1
+-----------
+
+New features
+~~~~~~~~~~~~
+
+ * Add support for InstallShield archives, using the unshield command.
+
+ * The wording of many of the interactive prompts has been adjusted,
+   hopefully to be clearer and provide more information to the user
+   immediately.
+
+Bug fixes
+~~~~~~~~~
+
+ * dtrx 6.1 does a better job protecting against race conditions when
+   extracting a single file.
+
+ * If you used the -f option, and extracted an archive that only contained
+   one file or directory, dtrx 6.0 would still prompt you to ask how it
+   should be extracted.  dtrx 6.1 fixes this, extracting the contents to
+   the current directory as -f requires.
+
+ * Recursive extraction would not work well in dtrx 6.0 when the contents
+   of the original archive were a single file.  This has been fixed in dtrx
+   6.1.
+
 Version 6.0
 -----------
 

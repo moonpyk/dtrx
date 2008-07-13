@@ -36,7 +36,7 @@ import traceback
 
 from sets import Set as set
 
-VERSION = "6.0"
+VERSION = "6.1"
 VERSION_BANNER = """dtrx version %s
 Copyright (c) 2006, 2007, 2008 Brett Smith <brettcsmith@brettcsmith.org>
 
