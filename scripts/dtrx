@@ -130,8 +130,8 @@ EXTRACTION_ERRORS = (ExtractorError, ExtractorUnusable, OSError, IOError)
 class BaseExtractor(object):
     decoders = {'bzip2': 'bzcat', 'gzip': 'zcat', 'compress': 'zcat',
                 'lzma': 'lzcat'}
-
     name_checker = DirectoryChecker
+    warning_header = "The extraction process output the following errors:\n"
 
     def __init__(self, filename, encoding):
         if encoding and (not self.decoders.has_key(encoding)):
@@ -247,7 +247,8 @@ class BaseExtractor(object):
         self.stderr.seek(0, 0)
         if self.stderr.read(1):
             self.stderr.seek(0, 0)
-            logger.warning(self.stderr.read(-1))
+            logger.warning(self.warning_header +
+                           self.stderr.read(-1).rstrip('\n'))
         self.stderr.close()
         error_index = self.first_bad_exit_code()
         if (not got_output) and (error_index is not None):
@@ -338,7 +339,7 @@ class CpioExtractor(BaseExtractor):
         return BaseExtractor.get_filenames(self)
 
     def extract_archive(self):
-        self.pipe(['cpio', '-i', '--make-directories',
+        self.pipe(['cpio', '-i', '--make-directories', '--quiet',
                    '--no-absolute-filenames'])
         self.run_pipes()
 

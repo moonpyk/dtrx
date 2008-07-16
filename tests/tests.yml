@@ -46,6 +46,12 @@
   baseline: |
     lzcat $1 | tar -x
 
+- name: basic .cpio
+  filenames: test-1.23.cpio
+  baseline: |
+    cpio -i --make-directories <$1
+  antigrep: blocks?
+
 - name: .deb metadata
   filenames: test-1.23_all.deb
   options: --metadata
