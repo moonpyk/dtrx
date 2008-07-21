@@ -2,16 +2,7 @@
 
 To do:
 
-* Add a test for the case where you x -l a misnamed file.
-
-* If any of the extraction processes succeeds, only show stderr for that
-  one.
-
 * Investigate the right way to handle SIGPIPE and do so.
-
-* When we extract a compressed file (or just one file?), check to see if it
-  itself is an archive.  Follow all the usual rules for recursive
-  extraction when we do this.
 
 * --expert mode: prompts don't show an explanation of what the options are,
   unless you ask with ?.

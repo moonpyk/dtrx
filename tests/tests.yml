@@ -477,6 +477,14 @@
     cd trickery
     unzip -q ../$1
 
+- name: listing file with misleading extension
+  options: -l
+  filenames: trickery.tar.gz
+  prerun: cp ${1}test-1.23.zip ${1}trickery.tar.gz
+  cleanup: rm -f ${1}trickery.tar.gz
+  grep: "^1/2/3$"
+  antigrep: "^dtrx:"
+
 - name: non-archive error
   filenames: /dev/null
   error: true
@@ -496,7 +504,7 @@
   filenames: test-directory
   prerun: mkdir test-directory
   error: true
-  grep: "cannot extract a directory"
+  grep: "cannot work with a directory"
 
 - name: permission denied error
   filenames: unreadable-file.tar.gz

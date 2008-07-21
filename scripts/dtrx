@@ -278,6 +278,7 @@ class BaseExtractor(object):
 
     def get_filenames(self):
         self.run_pipes()
+        self.check_success(False)
         self.archive.seek(0, 0)
         while True:
             line = self.archive.readline()
@@ -299,6 +300,15 @@ class CompressionExtractor(BaseExtractor):
         return '.'.join(pieces)
 
     def get_filenames(self):
+        # This code used to just immediately yield the basename, under the
+        # assumption that that would be the filename.  However, if that
+        # happens, dtrx -l will report this as a valid result for files with
+        # compression extensions, even if those files shouldn't actually be
+        # handled this way.  So, we call out to the file command to do a quick
+        # check and make sure this actually looks like a compressed file.
+        if 'compress' not in [match[0] for match in
+                              ExtractorBuilder.try_by_magic(self.filename)]:
+            raise ExtractorError("doesn't look like a compressed file")
         yield self.basename()
 
     def extract(self):
@@ -454,10 +464,8 @@ class SevenExtractor(NoPipeExtractor):
 
     def get_filenames(self):
         self.pipe(['7z', 'l', self.filename], "listing")
-        self.run_pipes()
-        self.archive.seek(0, 0)
         fn_index = None
-        for line in self.archive:
+        for line in NoPipeExtractor.get_filenames(self):
             if self.border_re.match(line):
                 if fn_index is not None:
                     break
@@ -478,13 +486,12 @@ class CABExtractor(NoPipeExtractor):
 
     def get_filenames(self):
         self.pipe(['cabextract', '-l', self.filename], "listing")
-        self.run_pipes()
-        self.archive.seek(0, 0)
         fn_index = None
-        for line in self.archive:
+        filenames = NoPipeExtractor.get_filenames(self)
+        for line in filenames:
             if self.border_re.match(line):
                 break
-        for line in self.archive:
+        for line in filenames:
             try:
                 yield line.split(' | ', 2)[2].rstrip('\n')
             except IndexError:
@@ -503,9 +510,7 @@ class ShieldExtractor(NoPipeExtractor):
 
     def get_filenames(self):
         self.pipe(['unshield', 'l', self.filename], "listing")
-        self.run_pipes()
-        self.archive.seek(0, 0)
-        for line in self.archive:
+        for line in NoPipeExtractor.get_filenames(self):
             if self.end_re.match(line):
                 break
             else:
@@ -1082,11 +1087,11 @@ class ExtractorApplication(object):
         except OSError, error:
             return error.strerror
         if stat.S_ISDIR(result.st_mode):
-            return "cannot extract a directory"
+            return "cannot work with a directory"
 
     def show_stderr(self, logger_func, stderr):
         if stderr:
-            logger_func("Error output from the extraction process:\n" +
+            logger_func("Error output from this process:\n" +
                         stderr.rstrip('\n'))
 
     def try_extractors(self, filename, builder):
