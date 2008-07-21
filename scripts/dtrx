@@ -256,6 +256,10 @@ class BaseExtractor(object):
                                  (self.pipes[error_index][1], command,
                                   self.exit_codes[error_index]))
         
+    def extract_archive(self):
+        self.pipe(self.extract_pipe)
+        self.run_pipes()
+
     def extract(self):
         try:
             self.target = tempfile.mkdtemp(prefix='.dtrx-', dir='.')
@@ -277,6 +281,7 @@ class BaseExtractor(object):
         os.chdir(old_path)
 
     def get_filenames(self):
+        self.pipe(self.list_pipe, "listing")
         self.run_pipes()
         self.check_success(False)
         self.archive.seek(0, 0)
@@ -330,27 +335,15 @@ class CompressionExtractor(BaseExtractor):
             
 class TarExtractor(BaseExtractor):
     file_type = 'tar file'
-
-    def get_filenames(self):
-        self.pipe(['tar', '-t'], "listing")
-        return BaseExtractor.get_filenames(self)
-
-    def extract_archive(self): 
-        self.pipe(['tar', '-x'])
-        self.run_pipes()
+    extract_pipe = ['tar', '-x']
+    list_pipe = ['tar', '-t']
         
         
 class CpioExtractor(BaseExtractor):
     file_type = 'cpio file'
-
-    def get_filenames(self):
-        self.pipe(['cpio', '-t'], "listing")
-        return BaseExtractor.get_filenames(self)
-
-    def extract_archive(self):
-        self.pipe(['cpio', '-i', '--make-directories', '--quiet',
-                   '--no-absolute-filenames'])
-        self.run_pipes()
+    extract_pipe = ['cpio', '-i', '--make-directories', '--quiet',
+                   '--no-absolute-filenames']
+    list_pipe = ['cpio', '-t']
 
 
 class RPMExtractor(CpioExtractor):
@@ -445,25 +438,28 @@ class NoPipeExtractor(BaseExtractor):
         BaseExtractor.__init__(self, '/dev/null', None)
         self.filename = os.path.realpath(filename)
 
+    def extract_archive(self):
+        self.extract_pipe = self.extract_command + [self.filename]
+        BaseExtractor.extract_archive(self)
+
+    def get_filenames(self):
+        self.list_pipe = self.list_command + [self.filename]
+        return BaseExtractor.get_filenames(self)
+
 
 class ZipExtractor(NoPipeExtractor):
     file_type = 'Zip file'
-
-    def get_filenames(self):
-        self.pipe(['zipinfo', '-1', self.filename], "listing")
-        return BaseExtractor.get_filenames(self)
-
-    def extract_archive(self):
-        self.pipe(['unzip', '-q', self.filename])
-        self.run_pipes()
+    extract_command = ['unzip', '-q']
+    list_command = ['zipinfo', '-1']
 
 
 class SevenExtractor(NoPipeExtractor):
     file_type = '7z file'
+    extract_command = ['7z', 'x']
+    list_command = ['7z', 'l']
     border_re = re.compile('^[- ]+$')
 
     def get_filenames(self):
-        self.pipe(['7z', 'l', self.filename], "listing")
         fn_index = None
         for line in NoPipeExtractor.get_filenames(self):
             if self.border_re.match(line):
@@ -474,18 +470,15 @@ class SevenExtractor(NoPipeExtractor):
             elif fn_index is not None:
                 yield line[fn_index:-1]
         self.archive.close()
-
-    def extract_archive(self):
-        self.pipe(['7z', 'x', self.filename])
-        self.run_pipes()
         
 
 class CABExtractor(NoPipeExtractor):
     file_type = 'CAB archive'
+    extract_command = ['cabextract', '-q']
+    list_command = ['cabextract', '-l']
     border_re = re.compile(r'^[-\+]+$')
 
     def get_filenames(self):
-        self.pipe(['cabextract', '-l', self.filename], "listing")
         fn_index = None
         filenames = NoPipeExtractor.get_filenames(self)
         for line in filenames:
@@ -498,18 +491,15 @@ class CABExtractor(NoPipeExtractor):
                 break
         self.archive.close()
 
-    def extract_archive(self):
-        self.pipe(['cabextract', '-q', self.filename])
-        self.run_pipes()
-
 
 class ShieldExtractor(NoPipeExtractor):
     file_type = 'InstallShield archive'
+    extract_command = ['unshield', 'x']
+    list_command = ['unshield', 'l']
     prefix_re = re.compile(r'^\s+\d+\s+')
     end_re = re.compile(r'^\s+-+\s+-+\s*$')
 
     def get_filenames(self):
-        self.pipe(['unshield', 'l', self.filename], "listing")
         for line in NoPipeExtractor.get_filenames(self):
             if self.end_re.match(line):
                 break
@@ -518,10 +508,6 @@ class ShieldExtractor(NoPipeExtractor):
                 if match:
                     yield line[match.end():].rstrip('\n')
         self.archive.close()
-
-    def extract_archive(self):
-        self.pipe(['unshield', 'x', self.filename])
-        self.run_pipes()
 
     def basename(self):
         result = NoPipeExtractor.basename(self)
