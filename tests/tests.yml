@@ -471,6 +471,7 @@
   filenames: trickery.tar.gz
   prerun: cp ${1}test-1.23.zip ${1}trickery.tar.gz
   cleanup: rm -f ${1}trickery.tar.gz
+  antigrep: .
   baseline: |
     mkdir trickery
     cd trickery

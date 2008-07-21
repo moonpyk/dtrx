@@ -131,7 +131,6 @@ class BaseExtractor(object):
     decoders = {'bzip2': 'bzcat', 'gzip': 'zcat', 'compress': 'zcat',
                 'lzma': 'lzcat'}
     name_checker = DirectoryChecker
-    warning_header = "The extraction process output the following errors:\n"
 
     def __init__(self, filename, encoding):
         if encoding and (not self.decoders.has_key(encoding)):
@@ -243,13 +242,13 @@ class BaseExtractor(object):
             pieces.pop()
         return '.'.join(pieces)
 
-    def check_success(self, got_output):
+    def get_stderr(self):
         self.stderr.seek(0, 0)
-        if self.stderr.read(1):
-            self.stderr.seek(0, 0)
-            logger.warning(self.warning_header +
-                           self.stderr.read(-1).rstrip('\n'))
+        errors = self.stderr.read(-1)
         self.stderr.close()
+        return errors
+
+    def check_success(self, got_output):
         error_index = self.first_bad_exit_code()
         if (not got_output) and (error_index is not None):
             command = ' '.join(self.pipes[error_index][0])
@@ -1085,26 +1084,34 @@ class ExtractorApplication(object):
         if stat.S_ISDIR(result.st_mode):
             return "cannot extract a directory"
 
+    def show_stderr(self, logger_func, stderr):
+        if stderr:
+            logger_func("Error output from the extraction process:\n" +
+                        stderr.rstrip('\n'))
+
     def try_extractors(self, filename, builder):
         errors = []
         for extractor in builder:
             error = self.action.run(filename, extractor)
             if error:
-                errors.append((extractor.file_type, extractor.encoding, error))
+                errors.append((extractor.file_type, extractor.encoding, error,
+                               extractor.get_stderr()))
                 if extractor.target is not None:
                     self.clean_destination(extractor.target)
             else:
+                self.show_stderr(logger.warn, extractor.get_stderr())
                 self.recurse(filename, extractor, self.action)
                 return
         logger.error("could not handle %s" % (filename,))
         if not errors:
             logger.error("not a known archive type")
             return True
-        for file_type, encoding, error in errors:
+        for file_type, encoding, error, stderr in errors:
             message = ["treating as", file_type, "failed:", error]
             if encoding:
                 message.insert(1, "%s-encoded" % (encoding,))
             logger.error(' '.join(message))
+            self.show_stderr(logger.error, stderr)
         return True
         
     def run(self):
