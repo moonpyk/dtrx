@@ -989,6 +989,13 @@ class ExtractorApplication(object):
         self.successes = []
         self.failures = []
 
+    def clean_destination(self, dest_name):
+        try:
+            os.unlink(dest_name)
+        except OSError, error:
+            if error.errno == errno.EISDIR:
+                shutil.rmtree(dest_name, ignore_errors=True)
+
     def abort(self, signal_num, frame):
         signal.signal(signal_num, signal.SIG_IGN)
         print
@@ -1001,11 +1008,7 @@ class ExtractorApplication(object):
         for directory in clean_targets:
             os.chdir(directory)
             for path in glob.glob('.dtrx-*'):
-                try:
-                    os.unlink(path)
-                except OSError, error:
-                    if error.errno == errno.EISDIR:
-                        shutil.rmtree(path, ignore_errors=True)
+                self.clean_destination(path)
         sys.exit(1)
 
     def parse_options(self, arguments):
@@ -1088,6 +1091,8 @@ class ExtractorApplication(object):
             error = self.action.run(filename, extractor)
             if error:
                 errors.append((extractor.file_type, extractor.encoding, error))
+                if extractor.target is not None:
+                    self.clean_destination(extractor.target)
             else:
                 self.recurse(filename, extractor, self.action)
                 return
