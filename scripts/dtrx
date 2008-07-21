@@ -731,67 +731,72 @@ class RecursionPolicy(BasePolicy):
             
 
 class ExtractorBuilder(object):
-    extractor_map = {'tar': (TarExtractor, None),
-                     'zip': (ZipExtractor, None),
-                     'deb': (DebExtractor, DebMetadataExtractor),
-                     'rpm': (RPMExtractor, None),
-                     'cpio': (CpioExtractor, None),
-                     'gem': (GemExtractor, GemMetadataExtractor),
-                     'compress': (CompressionExtractor, None),
-                     '7z': (SevenExtractor, None),
-                     'cab': (CABExtractor, None),
-                     'shield': (ShieldExtractor, None)}
+    extractor_map = {'tar': {'extractor': TarExtractor,
+                             'mimetypes': ('x-tar',),
+                             'extensions': ('tar',),
+                             'magic': ('POSIX tar archive',)},
+                     'zip': {'extractor': ZipExtractor,
+                             'mimetypes': ('zip',),
+                             'extensions': ('zip',),
+                             'magic': ('(Zip|ZIP self-extracting) archive',)},
+                     'rpm': {'extractor': RPMExtractor,
+                             'mimetypes': ('x-redhat-package-manager', 'x-rpm'),
+                             'extensions': ('rpm',),
+                             'magic': ('RPM',)},
+                     'deb': {'extractor': DebExtractor,
+                             'metadata': DebMetadataExtractor,
+                             'mimetypes': ('x-debian-package',),
+                             'extensions': ('deb',),
+                             'magic': ('Debian binary package',)},
+                     'cpio': {'extractor': CpioExtractor,
+                              'mimetypes': ('x-cpio',),
+                              'extensions': ('cpio',),
+                              'magic': ('cpio archive',)},
+                     'gem': {'extractor': GemExtractor,
+                             'metadata': GemMetadataExtractor,
+                             'mimetypes': ('x-ruby-gem',),
+                             'extensions': ('gem',)},
+                     '7z': {'extractor': SevenExtractor,
+                             'mimetypes': ('x-7z-compressed',),
+                             'extensions': ('7z',),
+                             'magic': ('7-zip archive',)},
+                     'cab': {'extractor': CABExtractor,
+                             'mimetypes': ('x-cab',),
+                             'extensions': ('cab',),
+                             'magic': ('Microsoft Cabinet Archive',)},
+                     'shield': {'extractor': ShieldExtractor,
+                                'mimetypes': ('x-cab',),
+                                'extensions': ('cab', 'hdr'),
+                                'magic': ('InstallShield CAB',)},
+                     'compress': {'extractor': CompressionExtractor}
+                     }
 
     mimetype_map = {}
-    for mapping in (('tar', 'x-tar'),
-                    ('zip', 'zip'),
-                    ('deb', 'x-debian-package'),
-                    ('rpm', 'x-redhat-package-manager', 'x-rpm'),
-                    ('cpio', 'x-cpio'),
-                    ('gem', 'x-ruby-gem'),
-                    ('7z', 'x-7z-compressed'),
-                    ('cab', 'x-cab'),
-                    ('shield', 'x-cab')):
-        for mimetype in mapping[1:]:
+    magic_mime_map = {}
+    extension_map = {}
+    for ext_name, ext_info in extractor_map.items():
+        for mimetype in ext_info.get('mimetypes', ()):
             if '/' not in mimetype:
                 mimetype = 'application/' + mimetype
-            mimetype_map[mimetype] = mapping[0]
+            mimetype_map[mimetype] = ext_name
+        for magic_re in ext_info.get('magic', ()):
+            magic_mime_map[re.compile(magic_re)] = ext_name
+        for extension in ext_info.get('extensions', ()):
+            extension_map.setdefault(extension, []).append((ext_name, None))
 
-    magic_mime_map = {}
-    for mapping in (('deb', 'Debian binary package'),
-                    ('cpio', 'cpio archive'),
-                    ('tar', 'POSIX tar archive'),
-                    ('zip', '(Zip|ZIP self-extracting) archive'),
-                    ('rpm', 'RPM'),
-                    ('7z', '7-zip archive'),
-                    ('cab', 'Microsoft Cabinet archive'),
-                    ('shield', 'InstallShield CAB')):
-        for pattern in mapping[1:]:
-            magic_mime_map[re.compile(pattern)] = mapping[0]
-    
+    for mapping in (('tar', 'bzip2', 'tar.bz2'),
+                    ('tar', 'gzip', 'tar.gz', 'tgz'),
+                    ('compress', 'gzip', 'Z', 'gz'),
+                    ('compress', 'bzip2', 'bz2'),
+                    ('compress', 'lzma', 'lzma')):
+        for extension in mapping[2:]:
+            extension_map.setdefault(extension, []).append(mapping[:2])
+
     magic_encoding_map = {}
     for mapping in (('bzip2', 'bzip2 compressed'),
                     ('gzip', 'gzip compressed')):
         for pattern in mapping[1:]:
             magic_encoding_map[re.compile(pattern)] = mapping[0]
-
-    extension_map = {}
-    for mapping in (('tar', 'bzip2', 'tar.bz2'),
-                    ('tar', 'gzip', 'tar.gz', 'tgz'),
-                    ('tar', None, 'tar'),
-                    ('zip', None, 'zip'),
-                    ('deb', None, 'deb'),
-                    ('rpm', None, 'rpm'),
-                    ('cpio', None, 'cpio'),
-                    ('gem', None, 'gem'),
-                    ('compress', 'gzip', 'Z', 'gz'),
-                    ('compress', 'bzip2', 'bz2'),
-                    ('compress', 'lzma', 'lzma'),
-                    ('7z', None, '7z'),
-                    ('cab', None, 'cab'),
-                    ('shield', None, 'cab', 'hdr')):
-        for extension in mapping[2:]:
-            extension_map.setdefault(extension, []).append(mapping[:2])
 
     def __init__(self, filename, options):
         self.filename = filename
@@ -799,10 +804,10 @@ class ExtractorBuilder(object):
 
     def build_extractor(self, archive_type, encoding):
         extractors = self.extractor_map[archive_type]
-        if self.options.metadata and (extractors[1] is not None):
-            extractor = extractors[1]
+        if self.options.metadata and extractors.has_key('metadata'):
+            extractor = extractors['metadata']
         else:
-            extractor = extractors[0]
+            extractor = extractors['extractor']
         return extractor(self.filename, encoding)
 
     def get_extractor(self):
