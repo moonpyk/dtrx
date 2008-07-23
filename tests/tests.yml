@@ -207,6 +207,12 @@
     test-1.23/a/b
     test-1.23/foobar
 
+- name: list contents of .cpio
+  options: -n -l
+  filenames: test-1.23.cpio
+  grep: ^test-1\.23/1/2/3$
+  antigrep: blocks?
+
 - name: list contents of multiple files
   options: -n --table
   filenames: test-1.23_all.deb test-1.23.zip

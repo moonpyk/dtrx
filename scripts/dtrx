@@ -343,7 +343,7 @@ class CpioExtractor(BaseExtractor):
     file_type = 'cpio file'
     extract_pipe = ['cpio', '-i', '--make-directories', '--quiet',
                    '--no-absolute-filenames']
-    list_pipe = ['cpio', '-t']
+    list_pipe = ['cpio', '-t', '--quiet']
 
 
 class RPMExtractor(CpioExtractor):
