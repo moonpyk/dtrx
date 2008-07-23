@@ -468,7 +468,7 @@ class SevenExtractor(NoPipeExtractor):
                 else:
                     fn_index = line.rindex(' ') + 1
             elif fn_index is not None:
-                yield line[fn_index:-1]
+                yield line[fn_index:]
         self.archive.close()
         
 
@@ -486,7 +486,7 @@ class CABExtractor(NoPipeExtractor):
                 break
         for line in filenames:
             try:
-                yield line.split(' | ', 2)[2].rstrip('\n')
+                yield line.split(' | ', 2)[2]
             except IndexError:
                 break
         self.archive.close()
@@ -506,7 +506,7 @@ class ShieldExtractor(NoPipeExtractor):
             else:
                 match = self.prefix_re.match(line)
                 if match:
-                    yield line[match.end():].rstrip('\n')
+                    yield line[match.end():]
         self.archive.close()
 
     def basename(self):
