@@ -1009,14 +1009,18 @@ class ExtractorApplication(object):
         print
         logger.debug("traceback:\n" +
                      ''.join(traceback.format_stack(frame)).rstrip())
-        logger.debug("got signal %s; cleaning up" % (signal_num,))
-        clean_targets = set([os.path.realpath('.')])
-        if hasattr(self, 'current_directory'):
-            clean_targets.add(os.path.realpath(self.current_directory))
-        for directory in clean_targets:
-            os.chdir(directory)
-            for path in glob.glob('.dtrx-*'):
-                self.clean_destination(path)
+        logger.debug("got signal %s" % (signal_num,))
+        try:
+            basename = self.current_extractor.target
+        except AttributeError:
+            basename = None
+        if basename is not None:
+            logger.debug("cleaning up %s" % (basename,))
+            clean_targets = set([os.path.realpath('.')])
+            if hasattr(self, 'current_directory'):
+                clean_targets.add(os.path.realpath(self.current_directory))
+            for directory in clean_targets:
+                self.clean_destination(os.path.join(directory, basename))
         sys.exit(1)
 
     def parse_options(self, arguments):
@@ -1108,6 +1112,7 @@ class ExtractorApplication(object):
     def try_extractors(self, filename, builder):
         errors = []
         for extractor in builder:
+            self.current_extractor = extractor  # For the abort() method.
             error = self.action.run(filename, extractor)
             if error:
                 errors.append((extractor.file_type, extractor.encoding, error,
