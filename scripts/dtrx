@@ -991,6 +991,7 @@ class ExtractorApplication(object):
     def __init__(self, arguments):
         for signal_num in (signal.SIGINT, signal.SIGTERM):
             signal.signal(signal_num, self.abort)
+        signal.signal(signal.SIGPIPE, signal.SIG_DFL)
         self.parse_options(arguments)
         self.setup_logger()
         self.successes = []
