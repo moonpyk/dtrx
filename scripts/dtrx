@@ -19,7 +19,6 @@
 # Python 2.3 string methods: 'rfind', 'rindex', 'rjust', 'rstrip'
 
 import errno
-import glob
 import logging
 import mimetypes
 import optparse
