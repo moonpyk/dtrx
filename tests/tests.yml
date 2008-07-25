@@ -243,7 +243,7 @@
     cd test-onedir
     tar -zxf ../$1
 
-- name: one directory extracted inside another (gz)
+- name: one directory extracted inside another interactively (gz)
   options: ""
   filenames: test-onedir.tar.gz
   grep: one directory
@@ -253,7 +253,7 @@
     cd test-onedir
     tar -zxf ../$1
 
-- name: one directory extracted with rename (gz)
+- name: one directory extracted with rename interactively (gz)
   options: ""
   filenames: test-onedir.tar.gz
   input: r
@@ -261,10 +261,31 @@
     tar -zxf $1
     mv test test-onedir
 
-- name: one directory extracted here (gz)
+- name: one directory extracted here interactively (gz)
   options: ""
   filenames: test-onedir.tar.gz
   input: h
+  baseline: |
+    tar -zxf $1
+
+- name: --one=inside
+  options: "--one=inside -n"
+  filenames: test-onedir.tar.gz
+  baseline: |
+    mkdir test-onedir
+    cd test-onedir
+    tar -zxf ../$1
+
+- name: --one=rename
+  options: "--one-entry=rename -n"
+  filenames: test-onedir.tar.gz
+  baseline: |
+    tar -zxf $1
+    mv test test-onedir
+
+- name: --one=here
+  options: "--one=here -n"
+  filenames: test-onedir.tar.gz
   baseline: |
     tar -zxf $1
 

@@ -29,16 +29,34 @@ dtrx supports a number of options to mandate specific behavior:
    if any of the contents are themselves archives, and extract those as
    well.
 
+--one, --one-entry
+   Normally, if an archive only contains one file or directory with a name
+   that doesn't match the archive's, dtrx will ask you how to handle it.
+   With this option, you can specify ahead of time what should happen.
+   Possible values are:
+
+   inside
+      Extract the file/directory inside another directory named after the
+      archive.  This is the default.
+
+   rename
+      Extract the file/directory in the current directory, and then rename
+      it to match the name of the archive.
+
+   here
+      Extract the file/directory in the current directory.
+
 -o, --overwrite
    Normally, dtrx will avoid extracting into a directory that already exists,
    and instead try to find an alternative name to use.  If this option is
    listed, dtrx will use the default directory name no matter what.
 
 -f, --flat
-   Extract archive contents into the current directory, instead of their
-   own dedicated directory.  This is handy if you have multiple archive
-   files which all need to be extracted into the same directory structure.
-   Note that existing files may be overwritten with this option.
+   Extract all archive contents into the current directory, instead of
+   their own dedicated directory.  This is handy if you have multiple
+   archive files which all need to be extracted into the same directory
+   structure.  Note that existing files may be overwritten with this
+   option.
 
 -n, --noninteractive
    dtrx will normally ask the user how to handle certain corner cases, such

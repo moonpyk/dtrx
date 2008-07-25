@@ -670,7 +670,19 @@ class OneEntryPolicy(BasePolicy):
     def __init__(self, options):
         BasePolicy.__init__(self, options)
         if options.flat:
+            default = 'h'
+        elif options.one_entry_default is not None:
+            default = options.one_entry_default.lower()
+        else:
+            return
+        if 'here'.startswith(default):
             self.permanent_policy = EXTRACT_HERE
+        elif 'rename'.startswith(default):
+            self.permanent_policy = EXTRACT_RENAME
+        elif 'inside'.startswith(default):
+            self.permanent_policy = EXTRACT_WRAP
+        elif default is not None:
+            raise ValueError("bad value %s for default policy" % (default,))
 
     def prep(self, archive_filename, extractor):
         question = ["%s contains one %s, but it has a weird name." %
@@ -1012,37 +1024,44 @@ class ExtractorApplication(object):
             description="Intelligent archive extractor",
             version=VERSION_BANNER
             )
-        parser.add_option('-r', '--recursive', dest='recursive',
-                          action='store_true', default=False,
-                          help='extract archives contained in the ones listed')
-        parser.add_option('-q', '--quiet', dest='quiet',
-                          action='count', default=3,
-                          help='suppress warning/error messages')
-        parser.add_option('-v', '--verbose', dest='verbose',
-                          action='count', default=0,
-                          help='be verbose/print debugging information')
-        parser.add_option('-o', '--overwrite', dest='overwrite',
-                          action='store_true', default=False,
-                          help='overwrite any existing target directory')
-        parser.add_option('-f', '--flat', '--no-directory', dest='flat',
-                          action='store_true', default=False,
-                          help="don't put contents in their own directory")
         parser.add_option('-l', '-t', '--list', '--table', dest='show_list',
                           action='store_true', default=False,
                           help="list contents of archives on standard output")
-        parser.add_option('-n', '--noninteractive', dest='batch',
-                          action='store_true', default=False,
-                          help="don't ask how to handle special cases")
         parser.add_option('-m', '--metadata', dest='metadata',
                           action='store_true', default=False,
                           help="extract metadata from a .deb/.gem")
+        parser.add_option('-r', '--recursive', dest='recursive',
+                          action='store_true', default=False,
+                          help="extract archives contained in the ones listed")
+        parser.add_option('--one', '--one-entry', dest='one_entry_default',
+                          default=None,
+                          help=("specify extraction policy for one-entry " +
+                                "archives: inside/rename/here"))
+        parser.add_option('-n', '--noninteractive', dest='batch',
+                          action='store_true', default=False,
+                          help="don't ask how to handle special cases")
+        parser.add_option('-o', '--overwrite', dest='overwrite',
+                          action='store_true', default=False,
+                          help="overwrite any existing target output")
+        parser.add_option('-f', '--flat', '--no-directory', dest='flat',
+                          action='store_true', default=False,
+                          help="extract everything to the current directory")
+        parser.add_option('-v', '--verbose', dest='verbose',
+                          action='count', default=0,
+                          help="be verbose/print debugging information")
+        parser.add_option('-q', '--quiet', dest='quiet',
+                          action='count', default=3,
+                          help="suppress warning/error messages")
         self.options, filenames = parser.parse_args(arguments)
         if not filenames:
             parser.error("you did not list any archives")
         # This makes WARNING is the default.
         self.options.log_level = (10 * (self.options.quiet -
                                         self.options.verbose))
-        self.options.one_entry_policy = OneEntryPolicy(self.options)
+        try:
+            self.options.one_entry_policy = OneEntryPolicy(self.options)
+        except ValueError:
+            parser.error("invalid value for --one-entry option")
         self.options.recursion_policy = RecursionPolicy(self.options)
         self.archives = {os.path.realpath(os.curdir): filenames}
 
