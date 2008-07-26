@@ -1,6 +1,38 @@
 Changes in dtrx
 ===============
 
+Version 6.2
+-----------
+
+New features
+~~~~~~~~~~~~
+
+ * --one-entry option: Normally, if an archive only contains one file or
+   directory with a name that doesn't match the archive's, dtrx will ask
+   you how to handle it.  With this option, you can specify ahead of time
+   what should happen.
+
+Bug fixes
+~~~~~~~~~
+
+ * Since version 6.0, when you extracted or listed the contents of a cpio
+   archive, dtrx would display a warning that simply said "1234 blocks."
+   dtrx 6.2 suppresses this message.
+
+ * When you try to list the contents of an archive, dtrx will now cope with
+   misnamed files more gracefully, giving more accurate results and showing
+   fewer error messages.
+
+ * dtrx 6.2 will only show you error messages from archive extraction if it
+   is completely unable to extract the file.  If one of its extraction
+   methods succeeds, it will no longer show you the error messages from
+   previous extraction attempts.
+
+ * dtrx is now better about cleaning up partially extracted archives when
+   it encounters an error or signal.
+
+ * Users will no longer see error messages about broken pipes from dtrx.
+
 Version 6.1
 -----------
 

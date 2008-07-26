@@ -3,6 +3,7 @@
 
 <html><head><title>dtrx: Intelligent archive extraction</title>
 <link rel="stylesheet" href="common.css">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 </head>
 <body>
 <h1>dtrx: Intelligent archive extraction</h1>
@@ -85,29 +86,31 @@ find archives inside the archive and extract those too.</li>
 
 <h2>Download</h2>
 
-<p><a href="dtrx-6.1.tar.gz">Download <span class="pname">dtrx</span>
-6.1</a>.  The SHA1 checksum for this file
-is <tt>2cd7c5e1ca2e83a942e5af58dceb0700063ce03d</tt>.  New features in this
+<p><a href="dtrx-6.2.tar.gz">Download <span class="pname">dtrx</span>
+6.2</a>.  The SHA1 checksum for this file
+is <tt>7f2c633c97e79083c08cb63f3c155395f8f88646</tt>.  New features in this
 release include:</p>
 
 <ul>
 
-<li>Add support for InstallShield archives, using
-the <span class="pname">unshield</span> command.</li>
-<li>The wording of many of the interactive prompts has been adjusted
-to be clearer and provide more information to the user
-immediately.</li>
-<li><span class="pname">dtrx</span> 6.1 does a better job protecting
-against race conditions when extracting a single file.</li>
-<li>If you used the -f option, and extracted an archive that only contained
-one file or directory, <span class="pname">dtrx</span> 6.0 would still
-prompt you to ask how it should be
-extracted.  <span class="pname">dtrx</span> 6.1 fixes this, extracting the
-contents to the current directory as -f requires.</li>
-<li>Recursive extraction would not work well
-in <span class="pname">dtrx</span> 6.0 when the contents of the original
-archive were a single file.  This has been fixed
-in <span class="pname">dtrx</span> 6.1.</li>
+<li>A new <tt>--one-entry</tt> option: Normally, if an archive only
+contains one file or directory with a name that doesn't match the
+archive's, dtrx will ask you how to handle it.  With this option, you can
+specify ahead of time what should happen.</li>
+<li>Since version 6.0, when you extracted or listed the contents of a cpio
+archive, dtrx would display a warning that simply said &quot;1234
+blocks.&quot; dtrx 6.2 suppresses this message.</li>
+<li>When you try to list the contents of an archive, dtrx will now cope
+with misnamed files more gracefully, giving more accurate results and
+showing fewer error messages.</li>
+<li>dtrx 6.2 will only show you error messages from archive extraction if
+it is completely unable to extract the file.  If one of its extraction
+methods succeeds, it will no longer show you the error messages from
+previous extraction attempts.</li>
+<li>dtrx is now better about cleaning up partially extracted archives when
+it encounters an error or signal.</li>
+<li>Users will no longer see error messages about broken pipes from
+dtrx.</li>
 
 </ul>
 
