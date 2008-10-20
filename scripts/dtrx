@@ -218,7 +218,6 @@ class BaseExtractor(object):
                     self.included_archives.append(os.path.join(path, filename))
 
     def check_contents(self):
-        self.contents = os.listdir('.')
         if not self.contents:
             self.content_type = EMPTY
         elif len(self.contents) == 1:
@@ -275,6 +274,7 @@ class BaseExtractor(object):
         try:
             self.archive.seek(0, 0)
             self.extract_archive()
+            self.contents = os.listdir('.')
             self.check_contents()
             self.check_success(self.content_type != EMPTY)
         except EXTRACTION_ERRORS:
