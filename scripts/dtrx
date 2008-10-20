@@ -35,7 +35,10 @@ import tempfile
 import textwrap
 import traceback
 
-from sets import Set as set
+try:
+    set
+except NameError:
+    from sets import Set as set
 
 VERSION = "6.3"
 VERSION_BANNER = """dtrx version %s
