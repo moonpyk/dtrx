@@ -1,0 +1,109 @@
+From Peter.Kelemen@gmail.com Fri Sep 19 18:51:00 2008
+Return-Path: <Peter.Kelemen@gmail.com>
+Date: Sat, 20 Sep 2008 00:51:17 +0200
+From: KELEMEN Peter <Peter.Kelemen@gmail.com>
+To: Brett Smith <brettcsmith@brettcsmith.org>
+Subject: [PATCH] dtrx: RAR support
+Message-ID: <20080919225117.GA993@kaylee>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+User-Agent: Mutt/1.5.17+20080114 (2008-01-14)
+Status: RO
+X-Status: A
+Content-Length: 1589
+Lines: 48
+
+Brett,
+
+The following patch adds RAR support for dtrx.
+
+HTH,
+Peter
+
+diff -r ececf7836546 scripts/dtrx
+--- a/scripts/dtrx	Tue Sep 16 21:51:59 2008 -0400
++++ b/scripts/dtrx	Sat Sep 20 00:50:16 2008 +0200
+@@ -515,6 +515,25 @@ class ShieldExtractor(NoPipeExtractor):
+         return result
+ 
+ 
++class RarExtractor(NoPipeExtractor):
++    file_type = 'RAR archive'
++    extract_command = ['unrar', 'x']
++    list_command = ['unrar', 'l']
++    border_re = re.compile('^-+$')
++
++    def get_filenames(self):
++        inside = False
++        for line in NoPipeExtractor.get_filenames(self):
++            if self.border_re.match(line):
++                if inside:
++                    break
++                else:
++                    inside = True
++            elif inside:
++                yield line.split(' ')[1]
++        self.archive.close()
++
++
+ class BaseHandler(object):
+     def __init__(self, extractor, options):
+         self.extractor = extractor
+@@ -775,6 +794,10 @@ class ExtractorBuilder(object):
+                              'mimetypes': ('x-cab',),
+                              'extensions': ('cab',),
+                              'magic': ('Microsoft Cabinet Archive',)},
++                     'rar': {'extractor': RarExtractor,
++                             'mimetypes': ('rar',),
++                             'extensions': ('rar'),
++                             'magic': ('RAR archive')},
+                      'shield': {'extractor': ShieldExtractor,
+                                 'mimetypes': ('x-cab',),
+                                 'extensions': ('cab', 'hdr'),
+
+
+From Peter.Kelemen@gmail.com Wed Sep 24 09:42:18 2008
+X-Original-To: me@brettcsmith.org
+Date: Wed, 24 Sep 2008 15:31:18 +0200
+From: KELEMEN Peter <Peter.Kelemen@gmail.com>
+To: Brett Smith <me@brettcsmith.org>
+Subject: Re: [PATCH] dtrx: RAR support
+Message-ID: <20080924133118.GG8943@kyra>
+References: <20080919225117.GA993@kaylee> <20080921180522.GB15446@canonical.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <20080921180522.GB15446@canonical.org>
+User-Agent: Mutt/1.5.17+20080114 (2008-01-14)
+Status: RO
+Content-Length: 684
+Lines: 25
+
+* Brett Smith (me@brettcsmith.org) [20080921 14:05]:
+
+> Thanks very much for this; it looks great.
+
+You're welcome.
+
+> Can you please confirm for me that it's licensed under GPLv3 or
+> any later version?  A simple "yes" will do.  :)
+
+Sure, GPLv3 is OK.
+
+> Also, do you want me to add any copyright notice(s) for your
+> contribution?
+
+I'm ambivalent, I trust your judgement.  Should you choose to do
+so, please use my Peter.Kelemen@gmail.com address.
+
+Thanks,
+Peter
+
+-- 
+    .+'''+.         .+'''+.         .+'''+.         .+'''+.         .+''
+ Kelemen Péter     /       \       /       \     Peter.Kelemen@gmail.com
+.+'         `+...+'         `+...+'         `+...+'         `+...+'
+
+

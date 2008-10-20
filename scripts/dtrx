@@ -1,7 +1,9 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 #
 # dtrx -- Intelligently extract various archive types.
-# Copyright (c) 2006, 2007, 2008 Brett Smith <brettcsmith@brettcsmith.org>.
+# Copyright ⓒ 2006, 2007, 2008 Brett Smith <brettcsmith@brettcsmith.org>
+# Copyright ⓒ 2008 Peter Kelemen <Peter.Kelemen@gmail.com>
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -515,6 +517,25 @@ class ShieldExtractor(NoPipeExtractor):
         return result
 
 
+class RarExtractor(NoPipeExtractor):
+    file_type = 'RAR archive'
+    extract_command = ['unrar', 'x']
+    list_command = ['unrar', 'l']
+    border_re = re.compile('^-+$')
+
+    def get_filenames(self):
+        inside = False
+        for line in NoPipeExtractor.get_filenames(self):
+            if self.border_re.match(line):
+                if inside:
+                    break
+                else:
+                    inside = True
+            elif inside:
+                yield line.split(' ')[1]
+        self.archive.close()
+
+
 class BaseHandler(object):
     def __init__(self, extractor, options):
         self.extractor = extractor
@@ -775,6 +796,10 @@ class ExtractorBuilder(object):
                              'mimetypes': ('x-cab',),
                              'extensions': ('cab',),
                              'magic': ('Microsoft Cabinet Archive',)},
+                     'rar': {'extractor': RarExtractor,
+                             'mimetypes': ('rar',),
+                             'extensions': ('rar',),
+                             'magic': ('RAR archive',)},
                      'shield': {'extractor': ShieldExtractor,
                                 'mimetypes': ('x-cab',),
                                 'extensions': ('cab', 'hdr'),
