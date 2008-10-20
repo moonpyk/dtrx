@@ -5,8 +5,8 @@ Introduction
 ------------
 
 dtrx extracts archives in a number of different formats; it currently
-supports tar, zip, cpio, rpm, deb, gem, 7z, and cab files.  It can also
-decompress files compressed with gzip, bzip2, lzma, or compress.
+supports tar, zip, cpio, rpm, deb, gem, 7z, cab, and rar files.  It can
+also decompress files compressed with gzip, bzip2, lzma, or compress.
 
 In addition to providing one command to handle many different archive
 types, dtrx also aids the user by extracting contents consistently.  By
@@ -88,9 +88,9 @@ dtrx supports a number of options to mandate specific behavior:
 Other Useful Information
 ------------------------
 
-dtrx 6.2 is copyright (c) 2006, 2007, 2008 `Brett Smith`_.  Feel free to
-send comments, bug reports, patches, and so on.  You can find the latest
-version of dtrx on `its home page`_.
+dtrx 6.3 is copyright ⓒ 2006, 2007, 2008 `Brett Smith`_ and others.  Feel
+free to send comments, bug reports, patches, and so on.  You can find the
+latest version of dtrx on `its home page`_.
 
 .. _`Brett Smith`: mailto:brettcsmith@brettcsmith.org
 .. _`its home page`: http://www.brettcsmith.org/2007/dtrx/

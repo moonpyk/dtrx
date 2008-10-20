@@ -42,6 +42,9 @@ Microsoft Cabinet archives
 InstallShield archives
   unshield
 
+rar archives
+  unrar
+
 Files compressed with gzip or compress
   zcat
 

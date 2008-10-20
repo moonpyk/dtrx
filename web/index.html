@@ -60,6 +60,7 @@ one simple command to extract
 <span class="pname">gem</span>,
 <span class="pname">7z</span>,
 <span class="pname">cab</span>,
+<span class="pname">rar</span>,
 <span class="pname">gz</span>,
 <span class="pname">bz2</span>,
 <span class="pname">lzma</span>, and many kinds of
@@ -67,9 +68,9 @@ one simple command to extract
 InstallShield archives, and self-extracting <span class="pname">zip</span>
 files.
 
-If they have any extra compression, like <span
-class="pname">tar.bz2</span>, <span class="pname">dtrx</span> will take
-care of that for you, too.</li>
+If they have any extra compression, like <span class="pname">tar.bz2</span>
+files, <span class="pname">dtrx</span> will take care of that for you,
+too.</li>
 
 <li><strong>Keeps everything organized</strong>: <span
 class="pname">dtrx</span> will make sure that archives are extracted into
@@ -86,31 +87,16 @@ find archives inside the archive and extract those too.</li>
 
 <h2>Download</h2>
 
-<p><a href="dtrx-6.2.tar.gz">Download <span class="pname">dtrx</span>
-6.2</a>.  The SHA1 checksum for this file
+<p><a href="dtrx-6.3.tar.gz">Download <span class="pname">dtrx</span>
+6.3</a>.  The SHA1 checksum for this file
 is <tt>7f2c633c97e79083c08cb63f3c155395f8f88646</tt>.  New features in this
 release include:</p>
 
 <ul>
 
-<li>A new <tt>--one-entry</tt> option: Normally, if an archive only
-contains one file or directory with a name that doesn't match the
-archive's, dtrx will ask you how to handle it.  With this option, you can
-specify ahead of time what should happen.</li>
-<li>Since version 6.0, when you extracted or listed the contents of a cpio
-archive, dtrx would display a warning that simply said &quot;1234
-blocks.&quot; dtrx 6.2 suppresses this message.</li>
-<li>When you try to list the contents of an archive, dtrx will now cope
-with misnamed files more gracefully, giving more accurate results and
-showing fewer error messages.</li>
-<li>dtrx 6.2 will only show you error messages from archive extraction if
-it is completely unable to extract the file.  If one of its extraction
-methods succeeds, it will no longer show you the error messages from
-previous extraction attempts.</li>
-<li>dtrx is now better about cleaning up partially extracted archives when
-it encounters an error or signal.</li>
-<li>Users will no longer see error messages about broken pipes from
-dtrx.</li>
+<li>New support for RAR archives, thanks to Peter Kelemen.</li>
+<li><span class="pname">dtrx</span> will no longer crash when extracting
+  certain archive types with the verbose option turned on.</li>
 
 </ul>
 

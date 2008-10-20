@@ -1,6 +1,20 @@
 Changes in dtrx
 ===============
 
+Version 6.3
+-----------
+
+New features
+~~~~~~~~~~~~
+
+ * Add support for RAR archives.  Thanks to Peter Kelemen for the patch.
+
+Bug fixes
+~~~~~~~~~
+
+ * Previous versions of dtrx would fail to extract certain archive types
+   with the ``-v`` option specified.  This has been fixed.
+
 Version 6.2
 -----------
 
