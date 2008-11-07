@@ -834,7 +834,8 @@ class ExtractorBuilder(object):
 
     magic_encoding_map = {}
     for mapping in (('bzip2', 'bzip2 compressed'),
-                    ('gzip', 'gzip compressed')):
+                    ('gzip', 'gzip compressed'),
+                    ('lzma', 'LZMA compressed')):
         for pattern in mapping[1:]:
             magic_encoding_map[re.compile(pattern)] = mapping[0]
 
