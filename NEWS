@@ -1,6 +1,16 @@
 Changes in dtrx
 ===============
 
+Version 6.4
+-----------
+
+Enhancements
+~~~~~~~~~~~~
+
+ * Support detection of LZMA archives by magic.
+
+ * Interactive prompts are wrapped much more cleanly.
+
 Version 6.3
 -----------
 
