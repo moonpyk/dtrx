@@ -646,3 +646,12 @@
   input: |
     h
     o
+
+- name: extracting empty archive
+  filenames: test-empty.tar.bz2
+  baseline: ""
+
+- name: listing empty archive
+  filenames: test-empty.tar.bz2
+  options: -l
+  antigrep: .

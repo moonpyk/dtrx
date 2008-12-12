@@ -638,6 +638,8 @@ class MatchHandler(BaseHandler):
 
 
 class EmptyHandler(object):
+    target = ''
+
     def can_handle(contents, options):
         return contents == EMPTY
     can_handle = staticmethod(can_handle)

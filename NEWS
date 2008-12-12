@@ -11,6 +11,12 @@ Enhancements
 
  * Interactive prompts are wrapped much more cleanly.
 
+Bug fixes
+~~~~~~~~~
+
+ * Fix a bug where dtrx would crash when extracting an archive with no
+   files inside it.
+
 Version 6.3
 -----------
 
