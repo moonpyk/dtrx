@@ -40,7 +40,7 @@ try:
 except NameError:
     from sets import Set as set
 
-VERSION = "6.3"
+VERSION = "6.4"
 VERSION_BANNER = """dtrx version %s
 Copyright ⓒ 2006, 2007, 2008 Brett Smith <brettcsmith@brettcsmith.org>
 Copyright ⓒ 2008 Peter Kelemen <Peter.Kelemen@gmail.com>
