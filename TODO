@@ -12,8 +12,6 @@ Things that are generally good:
 * Better error messages.
 
 Things I think might be good but can't prove:
-* Consider having options about whether or not to make sane directories,
-  have tarbomb protection, etc.
 * Use zipfile instead of the zip commands.
 * Processing from stdin.
 * shar support.
