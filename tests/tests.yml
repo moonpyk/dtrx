@@ -339,6 +339,12 @@
     cd test-onefile
     tar -zxf ../$1
 
+- name: prompt wording with one file
+  options: ""
+  filenames: test-onefile.tar.gz
+  input: i
+  grep: file _I_nside
+
 - name: one file extracted with rename, with Expected text
   options: ""
   filenames: test-onefile.tar.gz
@@ -358,7 +364,7 @@
 - name: bomb with preceding dot in the table
   filenames: test-dot-first-bomb.tar.gz
   options: ""
-  antigrep: one entry
+  antigrep: one
   baseline: |
     mkdir test-dot-first-bomb
     cd test-dot-first-bomb

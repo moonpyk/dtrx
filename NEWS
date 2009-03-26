@@ -1,6 +1,20 @@
 Changes in dtrx
 ===============
 
+Version 6.5
+-----------
+
+Bug fixes
+~~~~~~~~~
+
+ * When extracting an archive that contained a file with a mismatched
+   filename, the prompt would offer you a chance to "rename the directory"
+   instead of "rename the file."  This wording has been fixed, along with
+   some other wording adjustments in the prompts generally.
+
+ * Perform more reliable detection of the terminal size, and wrap more
+   prompts accordingly.
+
 Version 6.4
 -----------
 

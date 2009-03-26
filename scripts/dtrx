@@ -21,6 +21,7 @@
 # Python 2.3 string methods: 'rfind', 'rindex', 'rjust', 'rstrip'
 
 import errno
+import fcntl
 import logging
 import mimetypes
 import optparse
@@ -29,9 +30,11 @@ import re
 import shutil
 import signal
 import stat
+import struct
 import subprocess
 import sys
 import tempfile
+import termios
 import textwrap
 import traceback
 
@@ -661,11 +664,16 @@ class BombHandler(BaseHandler):
         
 class BasePolicy(object):
     try:
-        width = int(os.environ['COLUMNS'])
-    except (KeyError, ValueError):
+        size = fcntl.ioctl(sys.stdout.fileno(), termios.TIOCGWINSZ,
+                           struct.pack("HHHH", 0, 0, 0, 0))
+        width = struct.unpack("HHHH", size)[1]
+    except IOError:
         width = 80
-    wrapper = textwrap.TextWrapper(width=width - 1)
-
+    q_wrapper = textwrap.TextWrapper(width=width - 1, break_long_words=False)
+    choice_wrapper = textwrap.TextWrapper(width=width - 1, initial_indent=' * ',
+                                          subsequent_indent='   ',
+                                          break_long_words=False)
+    
     def __init__(self, options):
         self.current_policy = None
         if options.batch:
@@ -673,15 +681,10 @@ class BasePolicy(object):
         else:
             self.permanent_policy = None
 
-    def wrap(self, question, filename):
-        # Note: This function assumes the filename is the first thing in the
-        # question text, and that's the only place it appears.
-        if len(self.wrapper.wrap(filename + ' a')) > 1:
-            return [filename] + self.wrapper.wrap(question[3:])
-        return self.wrapper.wrap(question % (filename,))
-
     def ask_question(self, question):
-        question = question + self.choices
+        question = question + ["You can:"]
+        for choice in self.choices:
+            question.extend(self.choice_wrapper.wrap(choice))
         while True:
             print "\n".join(question)
             try:
@@ -700,10 +703,9 @@ class BasePolicy(object):
 class OneEntryPolicy(BasePolicy):
     answers = {'h': EXTRACT_HERE, 'i': EXTRACT_WRAP, 'r': EXTRACT_RENAME,
                '': EXTRACT_WRAP}
-    choices = ["You can:",
-               " * extract it Inside another directory",
-               " * extract it and Rename the directory",
-               " * extract it Here"]
+    choice_template = ["extract the %s _I_nside a new directory named %s",
+                       "extract the %s and _R_ename it %s",
+                       "extract the %s _H_ere"]
     prompt = "What do you want to do?  (I/r/h) "
 
     def __init__(self, options):
@@ -724,11 +726,14 @@ class OneEntryPolicy(BasePolicy):
             raise ValueError("bad value %s for default policy" % (default,))
 
     def prep(self, archive_filename, extractor):
-        question = self.wrap(("%%s contains one %s, but its name " +
-                              "doesn't match.") %
-                             (extractor.content_type,), archive_filename)
+        question = self.q_wrapper.wrap(
+            "%s contains one %s, but its name doesn't match." %
+            (archive_filename, extractor.content_type))
         question.append(" Expected: " + extractor.basename())
         question.append("   Actual: " + extractor.content_name)
+        choice_vars = (extractor.content_type, extractor.basename())
+        self.choices = [text % choice_vars[:text.count('%s')]
+                        for text in self.choice_template]
         self.current_policy = (self.permanent_policy or
                                self.ask_question(question))
 
@@ -739,12 +744,11 @@ class OneEntryPolicy(BasePolicy):
 class RecursionPolicy(BasePolicy):
     answers = {'o': RECURSE_ONCE, 'a': RECURSE_ALWAYS, 'n': RECURSE_NOT_NOW,
                'v': RECURSE_NEVER, 'l': RECURSE_LIST, '': RECURSE_NOT_NOW}
-    choices = ["You can:",
-               " * Always extract included archives",
-               " * extract included archives this Once",
-               " * choose Not to extract included archives",
-               " * neVer extract included archives",
-               " * List included archives"]
+    choices = ["_A_lways extract included archives during this session",
+               "extract included archives this _O_nce",
+               "choose _N_ot to extract included archives this once",
+               "ne_V_er extract included archives during this session",
+               "_L_ist included archives"]
     prompt = "What do you want to do?  (a/o/N/v/l) "
 
     def __init__(self, options):
@@ -759,10 +763,9 @@ class RecursionPolicy(BasePolicy):
         if (self.permanent_policy is not None) or (archive_count == 0):
             self.current_policy = self.permanent_policy or RECURSE_NOT_NOW
             return
-        question = self.wrap(("%%s contains %s other archive file(s), " +
-                              "out of %s file(s) total.") %
-                             (archive_count, extractor.file_count),
-                             current_filename)
+        question = self.q_wrapper.wrap(
+            "%s contains %s other archive file(s), out of %s file(s) total." %
+            (current_filename, archive_count, extractor.file_count))
         if target == '.':
             target = ''
         included_root = extractor.included_root
