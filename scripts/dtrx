@@ -669,8 +669,8 @@ class BasePolicy(object):
         width = struct.unpack("HHHH", size)[1]
     except IOError:
         width = 80
-    q_wrapper = textwrap.TextWrapper(width=width - 1, break_long_words=False)
-    choice_wrapper = textwrap.TextWrapper(width=width - 1, initial_indent=' * ',
+    width = width - 1
+    choice_wrapper = textwrap.TextWrapper(width=width, initial_indent=' * ',
                                           subsequent_indent='   ',
                                           break_long_words=False)
     
@@ -695,6 +695,19 @@ class BasePolicy(object):
                 return self.answers[answer.lower()]
             except KeyError:
                 print
+
+    def wrap(self, question, *args):
+        words = question.split()
+        for arg in args:
+            words[words.index('%s')] = arg
+        result = [words.pop(0)]
+        for word in words:
+            extend = '%s %s' % (result[-1], word)
+            if len(extend) > self.width:
+                result.append(word)
+            else:
+                result[-1] = extend
+        return result
 
     def __cmp__(self, other):
         return cmp(self.current_policy, other)
@@ -726,9 +739,9 @@ class OneEntryPolicy(BasePolicy):
             raise ValueError("bad value %s for default policy" % (default,))
 
     def prep(self, archive_filename, extractor):
-        question = self.q_wrapper.wrap(
-            "%s contains one %s, but its name doesn't match." %
-            (archive_filename, extractor.content_type))
+        question = self.wrap(
+            "%s contains one %s but its name doesn't match.",
+            archive_filename, extractor.content_type)
         question.append(" Expected: " + extractor.basename())
         question.append("   Actual: " + extractor.content_name)
         choice_vars = (extractor.content_type, extractor.basename())
@@ -763,9 +776,9 @@ class RecursionPolicy(BasePolicy):
         if (self.permanent_policy is not None) or (archive_count == 0):
             self.current_policy = self.permanent_policy or RECURSE_NOT_NOW
             return
-        question = self.q_wrapper.wrap(
-            "%s contains %s other archive file(s), out of %s file(s) total." %
-            (current_filename, archive_count, extractor.file_count))
+        question = self.wrap(
+            "%s contains %s other archive file(s), out of %s file(s) total.",
+            current_filename, archive_count, extractor.file_count)
         if target == '.':
             target = ''
         included_root = extractor.included_root

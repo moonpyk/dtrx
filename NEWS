@@ -12,8 +12,8 @@ Bug fixes
    instead of "rename the file."  This wording has been fixed, along with
    some other wording adjustments in the prompts generally.
 
- * Perform more reliable detection of the terminal size, and wrap more
-   prompts accordingly.
+ * Perform more reliable detection of the terminal size, and improve word
+   wrapping on prompts.
 
 Version 6.4
 -----------
