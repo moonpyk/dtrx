@@ -171,12 +171,21 @@ class BaseExtractor(object):
                 return index
         return None
 
+    def add_process(self, processes, command, stdin, stdout):
+        try:
+            processes.append(subprocess.Popen(command, stdin=stdin,
+                                              stdout=stdout,
+                                              stderr=self.stderr))
+        except OSError, error:
+            if error.errno == errno.ENOENT:
+                raise ExtractorUnusable("could not run %s" % (command[0],))
+            raise
+
     def run_pipes(self, final_stdout=None):
         if not self.pipes:
             return
         elif final_stdout is None:
-            # FIXME: Buffering this might be dumb.
-            final_stdout = tempfile.TemporaryFile()
+            final_stdout = open('/dev/null', 'w')
         num_pipes = len(self.pipes)
         last_pipe = num_pipes - 1
         processes = []
@@ -189,14 +198,7 @@ class BaseExtractor(object):
                 stdout = final_stdout
             else:
                 stdout = subprocess.PIPE
-            try:
-                processes.append(subprocess.Popen(command, stdin=stdin,
-                                                  stdout=stdout,
-                                                  stderr=self.stderr))
-            except OSError, error:
-                if error.errno == errno.ENOENT:
-                    raise ExtractorUnusable("could not run %s" % (command[0],))
-                raise
+            self.add_process(processes, command, stdin, stdout)
         self.exit_codes = [pipe.wait() for pipe in processes]
         self.archive.close()
         for index in range(last_pipe):
@@ -290,15 +292,22 @@ class BaseExtractor(object):
 
     def get_filenames(self):
         self.pipe(self.list_pipe, "listing")
-        self.run_pipes()
-        self.check_success(False)
-        self.archive.seek(0, 0)
+        processes = []
+        stdin = self.archive
+        for command in [pipe[0] for pipe in self.pipes]:
+            self.add_process(processes, command, stdin, subprocess.PIPE)
+            stdin = processes[-1].stdout
+        get_output_line = processes[-1].stdout.readline
         while True:
-            line = self.archive.readline()
+            line = get_output_line()
             if not line:
-                self.archive.close()
-                return
+                break
             yield line.rstrip('\n')
+        self.exit_codes = [pipe.wait() for pipe in processes]
+        self.archive.close()
+        for process in processes:
+            process.stdout.close()
+        self.check_success(False)
     
 
 class CompressionExtractor(BaseExtractor):
@@ -952,6 +961,7 @@ class BaseAction(object):
         self.options = options
         self.filenames = filenames
         self.target = None
+        self.do_print = False
         
     def report(self, function, *args):
         try:
@@ -961,14 +971,19 @@ class BaseAction(object):
             logger.debug(''.join(traceback.format_exception(*sys.exc_info())))
         return error
 
+    def show_filename(self, filename):
+        if len(self.filenames) < 2:
+            return
+        elif self.do_print:
+            print
+        else:
+            self.do_print = True
+        print "%s:" % (filename,)
+
 
 class ExtractionAction(BaseAction):
     handlers = [FlatHandler, OverwriteHandler, MatchHandler, EmptyHandler,
                 BombHandler]
-
-    def __init__(self, options, filenames):
-        BaseAction.__init__(self, options, filenames)
-        self.did_print = False
 
     def get_handler(self, extractor):
         if extractor.content_type in ONE_ENTRY_UNKNOWN:
@@ -983,11 +998,7 @@ class ExtractionAction(BaseAction):
     def show_extraction(self, extractor):
         if self.options.log_level > logging.INFO:
             return
-        elif self.did_print:
-            print
-        else:
-            self.did_print = True
-        print "%s:" % (self.current_filename,)
+        self.show_filename(self.current_filename)
         if extractor.contents is None:
             print self.current_handler.target
             return
@@ -1023,29 +1034,28 @@ class ExtractionAction(BaseAction):
 
 
 class ListAction(BaseAction):
-    def __init__(self, options, filenames):
-        BaseAction.__init__(self, options, filenames)
-        self.count = 0
-
-    def get_list(self, extractor):
-        # Note: The reason I'm getting all the filenames up front is
-        # because if we run into trouble partway through the archive, we'll
-        # try another extractor.  So before we display anything we have to
-        # be sure this one is successful.  We maybe don't have to be quite
-        # this conservative but this is the easy way out for now.
-        self.filelist = list(extractor.get_filenames())
-
-    def show_list(self, filename):
-        self.count += 1
-        if len(self.filenames) != 1:
-            if self.count > 1:
-                print
-            print "%s:" % (filename,)
-        print '\n'.join(self.filelist)
-
+    def list_filenames(self, extractor, filename):
+        # We get a line first to make sure there's not going to be some
+        # basic error before we show what filename we're listing.
+        filename_lister = extractor.get_filenames()
+        try:
+            first_line = filename_lister.next()
+        except StopIteration:
+            self.show_filename(filename)
+        else:
+            self.did_list = True
+            self.show_filename(filename)
+            print first_line
+        for line in filename_lister:
+            print line
+            
     def run(self, filename, extractor):
-        return (self.report(self.get_list, extractor) or
-                self.report(self.show_list, filename))
+        self.did_list = False
+        error = self.report(self.list_filenames, extractor, filename)
+        if error and self.did_list:
+            logger.error("lister failed: ignore above listing for %s" %
+                         (filename,))
+        return error
 
 
 class ExtractorApplication(object):

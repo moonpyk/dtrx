@@ -4,6 +4,14 @@ Changes in dtrx
 Version 6.5
 -----------
 
+Enhancements
+~~~~~~~~~~~~
+
+ * When you list archive contents with -l or -t, dtrx will start printing
+   results much faster than it used to.  There's a small chance that it
+   will print some incorrect listings if it misdetects the archive type of
+   a given file, but it will show you an error message when that happens.
+
 Bug fixes
 ~~~~~~~~~
 

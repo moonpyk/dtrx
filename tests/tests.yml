@@ -518,6 +518,22 @@
   grep: "^1/2/3$"
   antigrep: "^dtrx:"
 
+- name: listing multiple file with misleading extensions
+  options: -l
+  filenames: trickery.tar.gz trickery.tar.gz
+  prerun: cp ${1}test-1.23.zip ${1}trickery.tar.gz
+  cleanup: rm -f ${1}trickery.tar.gz
+  output: |
+    trickery.tar.gz:
+    1/2/3
+    a/b
+    foobar
+    
+    trickery.tar.gz:
+    1/2/3
+    a/b
+    foobar
+
 - name: non-archive error
   filenames: /dev/null
   error: true
@@ -612,7 +628,6 @@
   directory: busydir
   filenames: ../test-onedir.tar.gz
   output: |
-    ../test-onedir.tar.gz:
     test/
     test/foobar
     test/quux
