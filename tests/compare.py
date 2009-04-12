@@ -54,8 +54,13 @@ class ExtractorTest(object):
         setattr(self, 'options', kwargs.get('options', '-n').split())
         setattr(self, 'filenames', kwargs.get('filenames', '').split())
         for key in ('directory', 'prerun', 'posttest', 'baseline', 'error',
-                    'grep', 'antigrep', 'input', 'output', 'cleanup'):
+                    'input', 'output', 'cleanup'):
             setattr(self, key, kwargs.get(key, None))
+        for key in ('grep', 'antigrep'):
+            value = kwargs.get(key, [])
+            if isinstance(value, str):
+                value = [value]
+            setattr(self, key, value)
         
     def get_results(self, commands, stdin=None):
         print >>output_buffer, "Output from %s:" % (' '.join(commands),)
@@ -165,12 +170,13 @@ class ExtractorTest(object):
         return None
 
     def grep_output(self, output):
-        if self.grep and (not re.search(self.grep.replace(' ', '\\s+'),
-                                        output, re.MULTILINE)):
-            return "output did not match %s" % (self.grep)
-        elif self.antigrep and re.search(self.antigrep.replace(' ', '\\s+'),
-                                         output, re.MULTILINE):
-            return "output matched antigrep %s" % (self.antigrep)
+        for pattern in self.grep:
+            if not re.search(pattern.replace(' ', '\\s+'), output,
+                             re.MULTILINE):
+                return "output did not match %s" % (pattern)
+        for pattern in self.antigrep:
+            if re.search(pattern.replace(' ', '\\s+'), output, re.MULTILINE):
+                return "output matched antigrep %s" % (self.antigrep)
         return None
 
     def check_output(self, output):
