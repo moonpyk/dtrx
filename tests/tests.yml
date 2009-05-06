@@ -29,6 +29,13 @@
     cd test-1.23
     ar p ../$1 data.tar.gz | tar -zx
 
+- name: .deb with LZMA compression
+  filenames: test-2_all.deb
+  baseline: |
+    mkdir test-2
+    cd test-2
+    ar p ../$1 data.tar.lzma | lzcat | tar -x
+
 - name: basic .gem
   filenames: test-1.23.gem
   baseline: |

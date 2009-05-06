@@ -290,8 +290,9 @@ class BaseExtractor(object):
         self.archive.close()
         os.chdir(old_path)
 
-    def get_filenames(self):
-        self.pipe(self.list_pipe, "listing")
+    def get_filenames(self, internal=False):
+        if not internal:
+            self.pipe(self.list_pipe, "listing")
         processes = []
         stdin = self.archive
         for command in [pipe[0] for pipe in self.pipes]:
@@ -389,11 +390,25 @@ class RPMExtractor(CpioExtractor):
 
 class DebExtractor(TarExtractor):
     file_type = 'Debian package'
+    data_re = re.compile(r'^data\.tar\.[a-z0-9]+$')
 
     def prepare(self):
-        self.pipe(['ar', 'p', self.filename, 'data.tar.gz'],
-                  "data.tar.gz extraction")
-        self.pipe(['zcat'], "data.tar.gz decompression")
+        self.pipe(['ar', 't', self.filename], "finding package data file")
+        for filename in self.get_filenames(internal=True):
+            if self.data_re.match(filename):
+                data_filename = filename
+                break
+        else:
+            raise ExtractorError(".deb contains no data.tar file")
+        self.archive.seek(0, 0)
+        self.pipes.pop()
+        # self.pipes = start_pipes
+        encoding = mimetypes.guess_type(data_filename)[1]
+        if not encoding:
+            raise ExtractorError("data.tar file has unrecognized encoding")
+        self.pipe(['ar', 'p', self.filename, data_filename],
+                  "extracting data.tar from .deb")
+        self.pipe([self.decoders[encoding]], "decoding data.tar")
 
     def basename(self):
         pieces = os.path.basename(self.filename).split('_')
