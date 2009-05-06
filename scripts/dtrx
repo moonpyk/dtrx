@@ -883,6 +883,7 @@ class ExtractorBuilder(object):
 
     for mapping in (('tar', 'bzip2', 'tar.bz2'),
                     ('tar', 'gzip', 'tar.gz', 'tgz'),
+                    ('tar', 'lzma', 'tar.lzma', 'tlz'),
                     ('compress', 'gzip', 'Z', 'gz'),
                     ('compress', 'bzip2', 'bz2'),
                     ('compress', 'lzma', 'lzma')):
