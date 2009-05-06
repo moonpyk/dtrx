@@ -30,6 +30,7 @@ import re
 import shutil
 import signal
 import stat
+import string
 import struct
 import subprocess
 import sys
@@ -491,13 +492,6 @@ class SevenExtractor(NoPipeExtractor):
     list_command = ['7z', 'l']
     border_re = re.compile('^[- ]+$')
 
-    def rindex(line, target):
-        for index in range(-1, -len(line) - 1, -1):
-            if line[index] == target:
-                return len(line) + index
-        raise ValueError("substring not found")
-    rindex = staticmethod(rindex)
-
     def get_filenames(self):
         fn_index = None
         for line in NoPipeExtractor.get_filenames(self):
@@ -505,7 +499,7 @@ class SevenExtractor(NoPipeExtractor):
                 if fn_index is not None:
                     break
                 else:
-                    fn_index = self.rindex(line, ' ') + 1
+                    fn_index = string.rindex(line, ' ') + 1
             elif fn_index is not None:
                 yield line[fn_index:]
         self.archive.close()
