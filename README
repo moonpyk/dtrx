@@ -1,8 +1,24 @@
-dtrx - Intelligent archive extraction
-=====================================
+====
+dtrx
+====
 
-Introduction
-------------
+----------------------------------
+cleanly extract many archive types
+----------------------------------
+
+:Author: brettcsmith@brettcsmith.org
+:Date:   2009-05-05
+:Copyright: GNU General Public License, version 3 or later
+:Version: 6.4
+:Manual section: 1
+
+SYNOPSIS
+========
+
+dtrx [OPTIONS] ARCHIVE [ARCHIVE ...]
+
+DESCRIPTION
+===========
 
 dtrx extracts archives in a number of different formats; it currently
 supports tar, zip, cpio, rpm, deb, gem, 7z, cab, and rar files.  It can
@@ -14,13 +30,13 @@ default, everything will be written to a dedicated directory that's named
 after the archive.  dtrx will also change the permissions to ensure that the
 owner can read and write all those files.
 
-Running dtrx
-------------
-
 To run dtrx, simply call it with the archive(s) you wish to extract as
 arguments.  For example::
 
    $ dtrx coreutils-5.*.tar.gz
+
+OPTIONS
+=======
 
 dtrx supports a number of options to mandate specific behavior:
 
@@ -85,8 +101,8 @@ dtrx supports a number of options to mandate specific behavior:
 --version
    Display dtrx's version, copyright, and license information.
 
-Other Useful Information
-------------------------
+COPYRIGHT
+=========
 
 dtrx 6.4 is copyright ⓒ 2006, 2007, 2008 `Brett Smith`_ and others.  Feel
 free to send comments, bug reports, patches, and so on.  You can find the
