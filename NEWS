@@ -15,6 +15,9 @@ Enhancements
  * dtrx recognizes more kinds of compressed tar archives by their
    extension.
 
+ * You can now extract newer .deb packages that are compressed with bzip2
+   or lzma.
+
 Bug fixes
 ~~~~~~~~~
 
@@ -25,6 +28,14 @@ Bug fixes
 
  * Perform more reliable detection of the terminal size, and improve word
    wrapping on prompts.
+
+Other Changes
+~~~~~~~~~~~~~
+
+ * The README is now written like a man page, and can be converted to a man
+   page by using rst2man_.
+
+.. _rst2man: http://docutils.sourceforge.net/sandbox/manpage-writer/
 
 Version 6.4
 -----------
