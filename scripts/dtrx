@@ -881,9 +881,10 @@ class ExtractorBuilder(object):
         for extension in ext_info.get('extensions', ()):
             extension_map.setdefault(extension, []).append((ext_name, None))
 
-    for mapping in (('tar', 'bzip2', 'tar.bz2'),
+    for mapping in (('tar', 'bzip2', 'tar.bz2', 'tbz2', 'tb2', 'tbz'),
                     ('tar', 'gzip', 'tar.gz', 'tgz'),
                     ('tar', 'lzma', 'tar.lzma', 'tlz'),
+                    ('tar', 'compress', 'tar.Z', 'taz'),
                     ('compress', 'gzip', 'Z', 'gz'),
                     ('compress', 'bzip2', 'bz2'),
                     ('compress', 'lzma', 'lzma')):

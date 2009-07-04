@@ -12,6 +12,9 @@ Enhancements
    will print some incorrect listings if it misdetects the archive type of
    a given file, but it will show you an error message when that happens.
 
+ * dtrx recognizes more kinds of compressed tar archives by their
+   extension.
+
 Bug fixes
 ~~~~~~~~~
 
