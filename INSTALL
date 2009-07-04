@@ -28,7 +28,7 @@ rpm archives
   rpm2cpio, cpio
 
 deb archives
-  ar, tar, zcat
+  ar, tar, zcat, bzcat, lzcat
 
 gem archives
   tar, zcat
