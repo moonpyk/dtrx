@@ -29,7 +29,7 @@ Bug fixes
  * Perform more reliable detection of the terminal size, and improve word
    wrapping on prompts.
 
-Other Changes
+Other changes
 ~~~~~~~~~~~~~
 
  * The README is now written like a man page, and can be converted to a man
