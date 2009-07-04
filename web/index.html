@@ -87,15 +87,19 @@ find archives inside the archive and extract those too.</li>
 
 <h2>Download</h2>
 
-<p><a href="dtrx-6.4.tar.gz">Download <span class="pname">dtrx</span>
-6.4</a>.  The SHA1 checksum for this file
-is <tt>c3caedc29420cff6487580aad972c05c3757e685</tt>.  Improvements in this
+<p><a href="dtrx-6.5.tar.gz">Download <span class="pname">dtrx</span>
+6.5</a>.  The SHA1 checksum for this file
+is <tt>e6859391ac4ea1969c0e62799ef9466a11a48d89</tt>.  Improvements in this
 release include:</p>
 
 <ul>
 
-<li>Support for autodetecting LZMA compression by file magic.</li>
-<li>Better word wrapping in interactive prmopts.</li>
+<li>Improved performance when listing archive contents.</li>
+<li>Support for newer .deb packages that use bzip2 or lzma
+  compression.</li>
+<li>dtrx now detects more kinds of compressed tar files by their
+  extensions.</li>
+<li>Many improvements in the interactive prmopts.</li>
 
 </ul>
 
@@ -126,7 +130,7 @@ utilities.</p>
 convenient for you, but if you want to install the program system-wide, you
 can also run the following command as root or equivalent:</p>
 
-<pre>python setup.py install</pre>
+<pre>python setup.py install --prefix=/usr/local</pre>
 
 <p>See the included <tt>INSTALL</tt> file for more information.</p>
 

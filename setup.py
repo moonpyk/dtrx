@@ -3,7 +3,7 @@
 from distutils.core import setup
 
 setup(name="dtrx",
-      version = "6.4",
+      version = "6.5",
       description = "Script to intelligently extract multiple archive types",
       author = "Brett Smith",
       author_email = "brettcsmith@brettcsmith.org",

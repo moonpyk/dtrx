@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 # compare.py -- High-level tests for dtrx.
-# Copyright © 2006, 2007, 2008 Brett Smith <brettcsmith@brettcsmith.org>.
+# Copyright © 2006-2009 Brett Smith <brettcsmith@brettcsmith.org>.
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
