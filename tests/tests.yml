@@ -191,7 +191,7 @@
   filenames: tests.yml
   options: -n -qq
   error: true
-  antigrep: .
+  antigrep: '.'
 
 - name: can't write to directory
   directory: inside-dir
@@ -461,7 +461,7 @@
   input: |
     h
     o
-  grep: "contains 2 other archive file\(s\), out of 2 file\(s\)"
+  grep: 'contains 2 other archive file\(s\), out of 2 file\(s\)'
   baseline: |
     tar -xf $1
     cd subdir
@@ -511,7 +511,7 @@
   filenames: trickery.tar.gz
   prerun: cp ${1}test-1.23.zip ${1}trickery.tar.gz
   cleanup: rm -f ${1}trickery.tar.gz
-  antigrep: .
+  antigrep: '.'
   baseline: |
     mkdir trickery
     cd trickery
@@ -646,7 +646,7 @@
     r
     l
     n
-  grep: "^test-deep-recursion/subsubdir/test-text\.gz$"
+  grep: '^test-deep-recursion/subsubdir/test-text\.gz$'
 
 - name: partly failed extraction
   options: -n
@@ -682,4 +682,4 @@
 - name: listing empty archive
   filenames: test-empty.tar.bz2
   options: -l
-  antigrep: .
+  antigrep: '.'

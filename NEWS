@@ -1,6 +1,15 @@
 Changes in dtrx
 ===============
 
+Version 6.6
+-----------
+
+Other changes
+~~~~~~~~~~~~~
+
+ * The tests now use the PyYAML library, instead of the abandoned Syck.
+   Thanks to Miguelangel Jose Freitas Loreto for a patch.
+
 Version 6.5
 -----------
 

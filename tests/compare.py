@@ -20,7 +20,7 @@
 import os
 import re
 import subprocess
-import syck
+import yaml
 import sys
 import tempfile
 
@@ -220,7 +220,7 @@ class ExtractorTest(object):
 
 
 test_db = open('tests.yml')
-test_data = syck.load(test_db.read(-1))
+test_data = yaml.load(test_db.read(-1))
 test_db.close()
 tests = [ExtractorTest(**data) for data in test_data]
 for original_data in test_data:

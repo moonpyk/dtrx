@@ -73,9 +73,9 @@ Simply run the following command from the dtrx source directory::
 
    python tests/compare.py
 
-To run the tests, you'll need the `syck module`_.
+To run the tests, you'll need the `PyYAML module`_.
 
-.. _syck module: http://whytheluckystiff.net/syck/
+.. _PyYAML module: http://pyyaml.org/
 
 If everything's in order, all the tests should pass.  Note that some of
 them will fail if some of the programs listed above aren't installed on
