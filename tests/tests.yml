@@ -107,6 +107,14 @@
   posttest: |
     if [ "x`cat test-text`" != "xhi" ]; then exit 1; fi
 
+- name: decompressing xz
+  directory: inside-dir
+  filenames: ../test-text.xz
+  baseline: |
+    xzcat $1 >test-text
+  posttest: |
+    if [ "x`cat test-text`" != "xhi" ]; then exit 1; fi
+
 - name: decompression with -r
   directory: inside-dir
   filenames: ../test-text.gz

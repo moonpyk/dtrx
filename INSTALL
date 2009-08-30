@@ -54,6 +54,9 @@ Files compressed with bzip2
 Files compressed with lzma
   lzcat
 
+Files compressed with xz
+  xzcat
+
 Installation
 ------------
 

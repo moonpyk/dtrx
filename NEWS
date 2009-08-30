@@ -4,6 +4,13 @@ Changes in dtrx
 Version 6.6
 -----------
 
+Enhancements
+~~~~~~~~~~~~
+
+ * dtrx can now handle `xz compression`_.
+
+.. _xz compression: http://tukaani.org/xz/
+
 Other changes
 ~~~~~~~~~~~~~
 

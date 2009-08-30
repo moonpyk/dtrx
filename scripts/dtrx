@@ -44,7 +44,7 @@ try:
 except NameError:
     from sets import Set as set
 
-VERSION = "6.5"
+VERSION = "6.6"
 VERSION_BANNER = """dtrx version %s
 Copyright © 2006-2009 Brett Smith <brettcsmith@brettcsmith.org>
 Copyright © 2008 Peter Kelemen <Peter.Kelemen@gmail.com>
@@ -80,6 +80,7 @@ RECURSE_LIST = 5
 
 mimetypes.encodings_map.setdefault('.bz2', 'bzip2')
 mimetypes.encodings_map.setdefault('.lzma', 'lzma')
+mimetypes.encodings_map.setdefault('.xz', 'xz')
 mimetypes.types_map.setdefault('.gem', 'application/x-ruby-gem')
 
 logger = logging.getLogger('dtrx-log')
@@ -138,7 +139,7 @@ EXTRACTION_ERRORS = (ExtractorError, ExtractorUnusable, OSError, IOError)
 
 class BaseExtractor(object):
     decoders = {'bzip2': 'bzcat', 'gzip': 'zcat', 'compress': 'zcat',
-                'lzma': 'lzcat'}
+                'lzma': 'lzcat', 'xz': 'xzcat'}
     name_checker = DirectoryChecker
 
     def __init__(self, filename, encoding):
@@ -884,17 +885,20 @@ class ExtractorBuilder(object):
     for mapping in (('tar', 'bzip2', 'tar.bz2', 'tbz2', 'tb2', 'tbz'),
                     ('tar', 'gzip', 'tar.gz', 'tgz'),
                     ('tar', 'lzma', 'tar.lzma', 'tlz'),
+                    ('tar', 'xz', 'tar.xz'),
                     ('tar', 'compress', 'tar.Z', 'taz'),
                     ('compress', 'gzip', 'Z', 'gz'),
                     ('compress', 'bzip2', 'bz2'),
-                    ('compress', 'lzma', 'lzma')):
+                    ('compress', 'lzma', 'lzma'),
+                    ('compress', 'xz', 'xz')):
         for extension in mapping[2:]:
             extension_map.setdefault(extension, []).append(mapping[:2])
 
     magic_encoding_map = {}
     for mapping in (('bzip2', 'bzip2 compressed'),
                     ('gzip', 'gzip compressed'),
-                    ('lzma', 'LZMA compressed')):
+                    ('lzma', 'LZMA compressed'),
+                    ('xz', 'xz compressed')):
         for pattern in mapping[1:]:
             magic_encoding_map[re.compile(pattern)] = mapping[0]
 
