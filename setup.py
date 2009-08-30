@@ -3,7 +3,7 @@
 from distutils.core import setup
 
 setup(name="dtrx",
-      version = "6.5",
+      version = "6.6",
       description = "Script to intelligently extract multiple archive types",
       author = "Brett Smith",
       author_email = "brettcsmith@brettcsmith.org",
@@ -24,7 +24,7 @@ setup(name="dtrx",
       formats; it currently supports tar, zip (including self-extracting
       .exe files), cpio, rpm, deb, gem, 7z, cab, rar, and InstallShield
       files.  It can also decompress files compressed with gzip, bzip2,
-      lzma, or compress.
+      lzma, xz, or compress.
 
       In addition to providing one command to handle many different archive
       types, dtrx also aids the user by extracting contents consistently.
