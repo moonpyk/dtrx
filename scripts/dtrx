@@ -167,12 +167,6 @@ class BaseExtractor(object):
     def pipe(self, command, description="extraction"):
         self.pipes.append((command, description))
 
-    def first_bad_exit_code(self):
-        for index, code in enumerate(self.exit_codes):
-            if code != 0:
-                return index
-        return None
-
     def add_process(self, processes, command, stdin, stdout):
         try:
             processes.append(subprocess.Popen(command, stdin=stdin,
@@ -259,13 +253,25 @@ class BaseExtractor(object):
         self.stderr.close()
         return errors
 
-    def check_success(self, got_output):
-        error_index = self.first_bad_exit_code()
-        if (not got_output) and (error_index is not None):
+    def is_fatal_error(self, status):
+        return False
+
+    def first_bad_exit_code(self):
+        for index, code in enumerate(self.exit_codes):
+            if code > 0:
+                return index, code
+        return None, None
+
+    def check_success(self, got_files):
+        error_index, error_code = self.first_bad_exit_code()
+        logger.debug("success results: %s %s %s" % (got_files, error_index,
+                                                    self.exit_codes))
+        if (self.is_fatal_error(error_code) or
+            ((not got_files) and (error_code is not None))):
             command = ' '.join(self.pipes[error_index][0])
             raise ExtractorError("%s error: '%s' returned status code %s" %
                                  (self.pipes[error_index][1], command,
-                                  self.exit_codes[error_index]))
+                                  error_code))
         
     def extract_archive(self):
         self.pipe(self.extract_pipe)
@@ -486,6 +492,8 @@ class ZipExtractor(NoPipeExtractor):
     extract_command = ['unzip', '-q']
     list_command = ['zipinfo', '-1']
 
+    def is_fatal_error(self, status):
+        return status > 1
 
 class SevenExtractor(NoPipeExtractor):
     file_type = '7z file'
@@ -825,48 +833,48 @@ class RecursionPolicy(BasePolicy):
             
 
 class ExtractorBuilder(object):
-    extractor_map = {'tar': {'extractor': TarExtractor,
+    extractor_map = {'tar': {'extractors': (TarExtractor,),
                              'mimetypes': ('x-tar',),
                              'extensions': ('tar',),
                              'magic': ('POSIX tar archive',)},
-                     'zip': {'extractor': ZipExtractor,
+                     'zip': {'extractors': (ZipExtractor, SevenExtractor),
                              'mimetypes': ('zip',),
                              'extensions': ('zip',),
                              'magic': ('(Zip|ZIP self-extracting) archive',)},
-                     'rpm': {'extractor': RPMExtractor,
+                     'rpm': {'extractors': (RPMExtractor,),
                              'mimetypes': ('x-redhat-package-manager', 'x-rpm'),
                              'extensions': ('rpm',),
                              'magic': ('RPM',)},
-                     'deb': {'extractor': DebExtractor,
-                             'metadata': DebMetadataExtractor,
+                     'deb': {'extractors': (DebExtractor,),
+                             'metadata': (DebMetadataExtractor,),
                              'mimetypes': ('x-debian-package',),
                              'extensions': ('deb',),
                              'magic': ('Debian binary package',)},
-                     'cpio': {'extractor': CpioExtractor,
+                     'cpio': {'extractors': (CpioExtractor,),
                               'mimetypes': ('x-cpio',),
                               'extensions': ('cpio',),
                               'magic': ('cpio archive',)},
-                     'gem': {'extractor': GemExtractor,
-                             'metadata': GemMetadataExtractor,
+                     'gem': {'extractors': (GemExtractor,),
+                             'metadata': (GemMetadataExtractor,),
                              'mimetypes': ('x-ruby-gem',),
                              'extensions': ('gem',)},
-                     '7z': {'extractor': SevenExtractor,
+                     '7z': {'extractors': (SevenExtractor,),
                              'mimetypes': ('x-7z-compressed',),
                              'extensions': ('7z',),
                              'magic': ('7-zip archive',)},
-                     'cab': {'extractor': CABExtractor,
+                     'cab': {'extractors': (CABExtractor,),
                              'mimetypes': ('x-cab',),
                              'extensions': ('cab',),
                              'magic': ('Microsoft Cabinet Archive',)},
-                     'rar': {'extractor': RarExtractor,
+                     'rar': {'extractors': (RarExtractor,),
                              'mimetypes': ('rar',),
                              'extensions': ('rar',),
                              'magic': ('RAR archive',)},
-                     'shield': {'extractor': ShieldExtractor,
+                     'shield': {'extractors': (ShieldExtractor,),
                                 'mimetypes': ('x-cab',),
                                 'extensions': ('cab', 'hdr'),
                                 'magic': ('InstallShield CAB',)},
-                     'compress': {'extractor': CompressionExtractor}
+                     'compress': {'extractors': (CompressionExtractor,)}
                      }
 
     mimetype_map = {}
@@ -907,12 +915,13 @@ class ExtractorBuilder(object):
         self.options = options
 
     def build_extractor(self, archive_type, encoding):
-        extractors = self.extractor_map[archive_type]
-        if self.options.metadata and extractors.has_key('metadata'):
-            extractor = extractors['metadata']
+        type_info = self.extractor_map[archive_type]
+        if self.options.metadata and type_info.has_key('metadata'):
+            extractors = type_info['metadata']
         else:
-            extractor = extractors['extractor']
-        return extractor(self.filename, encoding)
+            extractors = type_info['extractors']
+        for extractor in extractors:
+            yield extractor(self.filename, encoding)
 
     def get_extractor(self):
         tried_types = set()
@@ -932,7 +941,8 @@ class ExtractorBuilder(object):
                 tried_types.add(ext_args)
                 logger.debug("trying %s extractor from %s" %
                              (ext_args, func_name))
-                yield self.build_extractor(*ext_args)
+                for extractor in self.build_extractor(*ext_args):
+                    yield extractor
 
     def try_by_mimetype(cls, filename):
         mimetype, encoding = mimetypes.guess_type(filename)
