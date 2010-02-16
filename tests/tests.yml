@@ -691,3 +691,11 @@
   filenames: test-empty.tar.bz2
   options: -l
   antigrep: '.'
+
+- name: download and extract
+  filenames: http://brettcsmith.org/2007/dtrx/test-download.gz
+  directory: inside-dir
+  baseline: |
+    wget "$1"
+    zcat test-download.gz >test-download
+  cleanup: rm -f test-download.gz test-download

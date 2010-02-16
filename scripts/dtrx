@@ -38,6 +38,7 @@ import tempfile
 import termios
 import textwrap
 import traceback
+import urlparse
 
 try:
     set
@@ -1238,6 +1239,21 @@ class ExtractorApplication(object):
             self.show_stderr(logger.error, stderr)
         return True
         
+    def download(self, filename):
+        url = filename.lower()
+        for protocol in 'http', 'https', 'ftp':
+            if url.startswith(protocol + '://'):
+                break
+        else:
+            return filename, None
+        # FIXME: This can fail if there's already a file in the directory
+        # that matches the basename of the URL.
+        status = subprocess.call(['wget', '-c', filename],
+                                 stdin=subprocess.PIPE)
+        if status != 0:
+            return None, "wget returned status code %s" % (status,)
+        return os.path.basename(urlparse.urlparse(filename)[2]), None
+
     def run(self):
         if self.options.show_list:
             action = ListAction
@@ -1248,9 +1264,12 @@ class ExtractorApplication(object):
             self.current_directory, self.filenames = self.archives.popitem()
             os.chdir(self.current_directory)
             for filename in self.filenames:
-                builder = ExtractorBuilder(filename, self.options)
-                error = (self.check_file(filename) or
-                         self.try_extractors(filename, builder.get_extractor()))
+                filename, error = self.download(filename)
+                if not error:
+                    builder = ExtractorBuilder(filename, self.options)
+                    error = (self.check_file(filename) or
+                             self.try_extractors(filename,
+                                                 builder.get_extractor()))
                 if error:
                     if error != True:
                         logger.error("%s: %s" % (filename, error))

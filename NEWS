@@ -4,6 +4,15 @@ Changes in dtrx
 Version 7.0
 -----------
 
+New features
+~~~~~~~~~~~~
+
+ * If any of dtrx's command line arguments are URLs, it will automatically
+   download them with wget -c in the current directory before extracting
+   them.  See the documentation for more information about this feature.
+   Note that there might be trouble if there's already a file in the
+   directory where wget would normally save the download.
+
 Enhancements
 ~~~~~~~~~~~~
 
