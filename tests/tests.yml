@@ -699,3 +699,12 @@
     wget "$1"
     zcat test-download.gz >test-download
   cleanup: rm -f test-download.gz test-download
+
+- name: recursive archive without prompt
+  filenames: test-recursive-no-prompt.tar.bz2
+  options: ""
+  baseline: |
+    mkdir test-recursive-no-prompt
+    cd test-recursive-no-prompt
+    tar -jxf ../$1
+  antigrep: '.'

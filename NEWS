@@ -22,6 +22,9 @@ Enhancements
  * dtrx will be smarter about removing extensions from filenames when
    extracting to a new directory or file.
 
+ * dtrx will not ask you if you want to recurse through an archive if
+   the number of archives inside the original file is small.
+
 Version 6.6
 -----------
 
