@@ -238,13 +238,25 @@ class BaseExtractor(object):
 
     def basename(self):
         pieces = os.path.basename(self.filename).split('.')
+        orig_len = len(pieces)
         extension = '.' + pieces[-1]
+        # This is maybe a little more clever than it ought to be.
+        # We're trying to be conservative about what remove, but also DTRT
+        # in cases like .tar.gz, and also do something reasonable if we
+        # encounter some completely off-the-wall extension.  So that means:
+        # 1. First remove any compression extension.
+        # 2. Then remove any commonly known extension that remains.
+        # 3. If neither of those did anything, remove anything that looks
+        #    like it's almost certainly an extension (less than 5 chars).
         if mimetypes.encodings_map.has_key(extension):
             pieces.pop()
             extension = '.' + pieces[-1]
         if (mimetypes.types_map.has_key(extension) or
             mimetypes.common_types.has_key(extension) or
             mimetypes.suffix_map.has_key(extension)):
+            pieces.pop()
+        if ((orig_len == len(pieces)) and
+            (orig_len > 1) and (len(pieces[-1]) < 5)):
             pieces.pop()
         return '.'.join(pieces)
 

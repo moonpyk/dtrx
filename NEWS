@@ -19,6 +19,9 @@ Enhancements
  * dtrx will try to extract ZIP files with 7z if unzip is not successful.
    Thanks to Edward H for reporting this bug.
 
+ * dtrx will be smarter about removing extensions from filenames when
+   extracting to a new directory or file.
+
 Version 6.6
 -----------
 
