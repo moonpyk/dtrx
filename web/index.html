@@ -88,14 +88,21 @@ find archives inside the archive and extract those too.</li>
 
 <h2>Download</h2>
 
-<p><a href="dtrx-6.6.tar.gz">Download <span class="pname">dtrx</span>
-6.6</a>.  The SHA1 checksum for this file
-is <tt>18b689739596007a2bb43a4ab94d341b68a05c9c</tt>.  Improvements in this
+<p><a href="dtrx-7.0.tar.gz">Download <span class="pname">dtrx</span>
+7.0</a>.  The SHA1 checksum for this file
+is <tt>7ebdd038ac25a8af3ab27d108b9427562f1e58fa</tt>.  Improvements in this
 release include:</p>
 
 <ul>
 
-<li>Support for xz compression.</li>
+<li>Automatically download and extract URLs given as arguments.</li>
+<li>Extract <span class="pname">zip</span> files
+  with <span class="pname">7z</span> if <span class="pname">unzip</span>
+  does not succeed.</li>
+<li>Remove more common extensions from filenames when extracting to a new
+  directory or file.</li>
+<li>Don't offer to recurse through a archives if most of the included files
+  aren't archives.</li>
 
 </ul>
 

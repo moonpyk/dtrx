@@ -7,10 +7,10 @@ cleanly extract many archive types
 ----------------------------------
 
 :Author: Brett Smith <brettcsmith@brettcsmith.org>
-:Date:   2009-07-04
+:Date:   2010-09-05
 :Copyright:
 
-  dtrx 6.6 is copyright © 2006-2009 Brett Smith and others.  Feel free to
+  dtrx 7.0 is copyright © 2006-2010 Brett Smith and others.  Feel free to
   send comments, bug reports, patches, and so on.  You can find the latest
   version of dtrx on its home page at
   <http://www.brettcsmith.org/2007/dtrx/>.
@@ -28,7 +28,7 @@ cleanly extract many archive types
   You should have received a copy of the GNU General Public License along
   with this program; if not, see <http://www.gnu.org/licenses/>.
 
-:Version: 6.6
+:Version: 7.0
 :Manual section: 1
 
 SYNOPSIS
@@ -42,7 +42,7 @@ DESCRIPTION
 dtrx extracts archives in a number of different formats; it currently
 supports tar, zip (including self-extracting .exe files), cpio, rpm, deb,
 gem, 7z, cab, rar, and InstallShield files.  It can also decompress files
-compressed with gzip, bzip2, lzma, or compress.
+compressed with gzip, bzip2, lzma, xz, or compress.
 
 In addition to providing one command to handle many different archive
 types, dtrx also aids the user by extracting contents consistently.  By
@@ -54,6 +54,11 @@ To run dtrx, simply call it with the archive(s) you wish to extract as
 arguments.  For example::
 
    $ dtrx coreutils-5.*.tar.gz
+
+You may specify URLs as arguments as well.  If you do, dtrx will use `wget
+-c` to download the URL to the current directory and then extract what it
+downloads.  This may fail if you already have a file in the current
+directory with the same name as the file you're trying to download.
 
 OPTIONS
 =======
@@ -108,12 +113,11 @@ dtrx supports a number of options to mandate specific behavior:
    contents.
 
 -q, --quiet
-   Suppress warning messages.  Listing this option twice will cause dtrx to
-   be silent.
+   Suppress warning messages.  List this option twice to make dtrx silent.
 
 -v, --verbose
-   Show the files that are being extracted.  Listing this option twice will
-   cause dtrx to print debugging information.
+   Show the files that are being extracted.  List this option twice to
+   print debugging information.
 
 --help
    Display basic help.
