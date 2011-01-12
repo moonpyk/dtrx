@@ -508,6 +508,7 @@ class ZipExtractor(NoPipeExtractor):
     def is_fatal_error(self, status):
         return status > 1
 
+
 class SevenExtractor(NoPipeExtractor):
     file_type = '7z file'
     extract_command = ['7z', 'x']
@@ -888,6 +889,10 @@ class ExtractorBuilder(object):
                                 'mimetypes': ('x-cab',),
                                 'extensions': ('cab', 'hdr'),
                                 'magic': ('InstallShield CAB',)},
+                     'msi': {'extractors': (SevenExtractor,),
+                             'mimetypes': ('x-msi', 'x-ole-storage'),
+                             'extensions': ('msi',),
+                             'magic': ('Application: Windows Installer',)},
                      'compress': {'extractors': (CompressionExtractor,)}
                      }
 
