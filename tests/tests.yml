@@ -74,22 +74,23 @@
     tar -xOf $1 metadata.gz | zcat > test-1.23.gem-metadata.txt
   cleanup: rm -f test-1.23.gem-metadata.txt
   posttest: |
-    if [ "x`cat test-1.23.gem-metadata.txt`" != "xhi" ]; then exit 1; fi
+    exec [ "$(cat test-1.23.gem-metadata.txt)" = "hi" ]
 
 - name: recursion and permissions
   filenames: test-recursive-badperms.tar.bz2
   options: -n -r
   baseline: |
-    mkdir test-recursive-badperms
-    cd test-recursive-badperms
-    tar -jxf ../$1
-    mkdir test-badperms
-    cd test-badperms
-    tar -xf ../test-badperms.tar
+    extract() {
+      mkdir "$1"
+      cd "$1"
+      tar "-${3}xf" "../$2"
+    }
+    extract test-recursive-badperms "$1" j
+    extract test-badperms test-badperms.tar
     chmod 700 testdir
   posttest: |
-    if [ "x`cat test-recursive-badperms/test-badperms/testdir/testfile`" != \
-         "xhey" ]; then exit 1; fi
+    exec [ "$(cat test-recursive-badperms/test-badperms/testdir/testfile)" = \
+           "hey" ]
 
 - name: decompressing gz, not interactive
   directory: inside-dir
@@ -99,7 +100,7 @@
   baseline: |
     zcat $1 >test-text
   posttest: |
-    if [ "x`cat test-text`" != "xhi" ]; then exit 1; fi
+    exec [ "$(cat test-text)" = "hi" ]
 
 - name: decompressing bz2, not interactive
   directory: inside-dir
@@ -109,7 +110,7 @@
   baseline: |
     bzcat $1 >test-text
   posttest: |
-    if [ "x`cat test-text`" != "xhi" ]; then exit 1; fi
+    exec [ "$(cat test-text)" = "hi" ]
 
 - name: decompressing xz, not interactive
   directory: inside-dir
@@ -119,7 +120,7 @@
   baseline: |
     xzcat $1 >test-text
   posttest: |
-    if [ "x`cat test-text`" != "xhi" ]; then exit 1; fi
+    exec [ "$(cat test-text)" = "hi" ]
 
 - name: decompressing lzip, not interactive
   directory: inside-dir
@@ -129,7 +130,7 @@
   baseline: |
     lunzip <$1 >test-text
   posttest: |
-    if [ "x`cat test-text`" != "xhi" ]; then exit 1; fi
+    exec [ "$(cat test-text)" = "hi" ]
 
 - name: decompression with -r
   directory: inside-dir
@@ -179,7 +180,7 @@
     tar -xf test-badperms.tar
     chmod 700 testdir
   posttest: |
-    if [ "x`cat testdir/testfile`" != "xhey" ]; then exit 1; fi
+    exec [ "$(cat testdir/testfile)" = "hey" ]
 
 - name: no files
   error: true
@@ -450,17 +451,16 @@
     i
     n
   baseline: |
-    mkdir test-recursive-badperms
-    cd test-recursive-badperms
-    tar -jxf ../$1
-    mkdir test-badperms
-    cd test-badperms
-    tar -xf ../test-badperms.tar
+    extract() {
+      mkdir "$1"
+      cd "$1"
+      tar "-${3}xf" "../$2"
+    }
+    extract test-recursive-badperms "$1" j
+    extract test-badperms test-badperms.tar
     chmod 700 testdir
     cd ../..
-    mkdir test-recursive-badperms.1
-    cd test-recursive-badperms.1
-    tar -jxf ../$1
+    extract test-recursive-badperms.1 "$1" j
 
 - name: interactive recursion (never)
   filenames: test-recursive-badperms.tar.bz2 test-recursive-badperms.tar.bz2
