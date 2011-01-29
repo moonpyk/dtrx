@@ -91,25 +91,31 @@
     if [ "x`cat test-recursive-badperms/test-badperms/testdir/testfile`" != \
          "xhey" ]; then exit 1; fi
 
-- name: decompressing gz
+- name: decompressing gz, not interactive
   directory: inside-dir
   filenames: ../test-text.gz
+  options: ""
+  antigrep: "."
   baseline: |
     zcat $1 >test-text
   posttest: |
     if [ "x`cat test-text`" != "xhi" ]; then exit 1; fi
 
-- name: decompressing bz2
+- name: decompressing bz2, not interactive
   directory: inside-dir
   filenames: ../test-text.bz2
+  options: ""
+  antigrep: "."
   baseline: |
     bzcat $1 >test-text
   posttest: |
     if [ "x`cat test-text`" != "xhi" ]; then exit 1; fi
 
-- name: decompressing xz
+- name: decompressing xz, not interactive
   directory: inside-dir
   filenames: ../test-text.xz
+  options: ""
+  antigrep: "."
   baseline: |
     xzcat $1 >test-text
   posttest: |

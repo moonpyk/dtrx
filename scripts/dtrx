@@ -359,6 +359,7 @@ class CompressionExtractor(BaseExtractor):
         self.content_type = ONE_ENTRY_KNOWN
         self.content_name = self.basename()
         self.contents = None
+        self.file_count = 1
         self.included_root = './'
         try:
             output_fd, self.target = tempfile.mkstemp(prefix='.dtrx-', dir='.')
