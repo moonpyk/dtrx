@@ -82,6 +82,7 @@ RECURSE_LIST = 5
 mimetypes.encodings_map.setdefault('.bz2', 'bzip2')
 mimetypes.encodings_map.setdefault('.lzma', 'lzma')
 mimetypes.encodings_map.setdefault('.xz', 'xz')
+mimetypes.encodings_map.setdefault('.lz', 'lzip')
 mimetypes.types_map.setdefault('.gem', 'application/x-ruby-gem')
 
 logger = logging.getLogger('dtrx-log')
@@ -140,7 +141,7 @@ EXTRACTION_ERRORS = (ExtractorError, ExtractorUnusable, OSError, IOError)
 
 class BaseExtractor(object):
     decoders = {'bzip2': 'bzcat', 'gzip': 'zcat', 'compress': 'zcat',
-                'lzma': 'lzcat', 'xz': 'xzcat'}
+                'lzma': 'lzcat', 'xz': 'xzcat', 'lzip': 'lunzip'}
     name_checker = DirectoryChecker
 
     def __init__(self, filename, encoding):
@@ -914,6 +915,7 @@ class ExtractorBuilder(object):
                     ('tar', 'gzip', 'tar.gz', 'tgz'),
                     ('tar', 'lzma', 'tar.lzma', 'tlz'),
                     ('tar', 'xz', 'tar.xz'),
+                    ('tar', 'lz', 'tar.lz'),
                     ('tar', 'compress', 'tar.Z', 'taz'),
                     ('compress', 'gzip', 'Z', 'gz'),
                     ('compress', 'bzip2', 'bz2'),
@@ -926,6 +928,7 @@ class ExtractorBuilder(object):
     for mapping in (('bzip2', 'bzip2 compressed'),
                     ('gzip', 'gzip compressed'),
                     ('lzma', 'LZMA compressed'),
+                    ('lzip', 'lzip compressed'),
                     ('xz', 'xz compressed')):
         for pattern in mapping[1:]:
             magic_encoding_map[re.compile(pattern)] = mapping[0]

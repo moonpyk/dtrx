@@ -121,6 +121,16 @@
   posttest: |
     if [ "x`cat test-text`" != "xhi" ]; then exit 1; fi
 
+- name: decompressing lzip, not interactive
+  directory: inside-dir
+  filenames: ../test-text.lz
+  options: ""
+  antigrep: "."
+  baseline: |
+    lunzip <$1 >test-text
+  posttest: |
+    if [ "x`cat test-text`" != "xhi" ]; then exit 1; fi
+
 - name: decompression with -r
   directory: inside-dir
   filenames: ../test-text.gz
