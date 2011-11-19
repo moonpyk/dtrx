@@ -24,7 +24,10 @@ import yaml
 import sys
 import tempfile
 
-from sets import Set as set
+try:
+    set
+except NameError:
+    from sets import Set as set
 
 if os.path.exists('scripts/dtrx') and os.path.exists('tests'):
     os.chdir('tests')
