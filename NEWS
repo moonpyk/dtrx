@@ -1,6 +1,23 @@
 Changes in dtrx
 ===============
 
+Version 7.1
+-----------
+
+New features
+~~~~~~~~~~~~
+
+ * LHA archives are now supported.
+
+Bug fixes
+~~~~~~~~~
+
+ * dtrx will no longer offer to extract the zero archive files found in a
+   zero-file archive.
+
+ * Temporary directories will be cleaned up after extracting an empty
+   archive.
+
 Version 7.0
 -----------
 

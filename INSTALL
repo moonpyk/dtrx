@@ -36,6 +36,9 @@ gem archives
 7z archives
   7z
 
+lzh archives
+  lha
+
 Microsoft Cabinet archives
   cabextract
 
