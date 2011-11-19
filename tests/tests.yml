@@ -22,6 +22,13 @@
     cd test-1.23
     unzip -q ../$1
 
+- name: basic .lzh
+  filenames: test-1.23.lzh
+  baseline: |
+    mkdir test-1.23
+    cd test-1.23
+    lha xq ../$1
+
 - name: basic .deb
   filenames: test-1.23_all.deb
   baseline: |
@@ -238,6 +245,17 @@
     test-1.23/a/
     test-1.23/a/b
     test-1.23/foobar
+
+- name: list contents of LZH
+  options: -n -l
+  filenames: test-1.23.lzh
+  output: |
+    1/
+    1/2/
+    1/2/3
+    a/
+    a/b
+    foobar
 
 - name: list contents of .cpio
   options: -n -l

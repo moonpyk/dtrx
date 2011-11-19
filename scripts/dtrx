@@ -511,6 +511,36 @@ class ZipExtractor(NoPipeExtractor):
         return status > 1
 
 
+class LZHExtractor(ZipExtractor):
+    file_type = 'LZH file'
+    extract_command = ['lha', 'xq']
+    list_command = ['lha', 'l']
+
+    def border_line_file_index(self, line):
+        last_space_index = None
+        for index, char in enumerate(line):
+            if char == ' ':
+                last_space_index = index
+            elif char != '-':
+                return None
+        if last_space_index is None:
+            return None
+        return last_space_index + 1
+
+    def get_filenames(self):
+        filenames = NoPipeExtractor.get_filenames(self)
+        for line in filenames:
+            fn_index = self.border_line_file_index(line)
+            if fn_index is not None:
+                break
+        for line in filenames:
+            if self.border_line_file_index(line):
+                break
+            else:
+                yield line[fn_index:]
+        self.archive.close()
+
+
 class SevenExtractor(NoPipeExtractor):
     file_type = '7z file'
     extract_command = ['7z', 'x']
@@ -858,6 +888,10 @@ class ExtractorBuilder(object):
                              'mimetypes': ('zip',),
                              'extensions': ('zip',),
                              'magic': ('(Zip|ZIP self-extracting) archive',)},
+                     'lzh': {'extractors': (LZHExtractor,),
+                             'mimetypes': ('x-lzh', 'x-lzh-compressed'),
+                             'extensions': ('lzh', 'lha'),
+                             'magic': ('LHa [\d\.\?]+ archive',)},
                      'rpm': {'extractors': (RPMExtractor,),
                              'mimetypes': ('x-redhat-package-manager', 'x-rpm'),
                              'extensions': ('rpm',),
