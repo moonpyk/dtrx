@@ -727,7 +727,9 @@ class EmptyHandler(object):
         return contents == EMPTY
     can_handle = staticmethod(can_handle)
 
-    def __init__(self, extractor, options): pass
+    def __init__(self, extractor, options):
+        os.rmdir(extractor.target)
+
     def handle(self): pass
 
 

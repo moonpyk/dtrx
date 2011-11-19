@@ -184,7 +184,7 @@ class ExtractorTest(object):
                    self.check_output(output) or self.grep_output(output))
         if problem:
             return self.show_status('FAILED', problem)
-        if self.baseline:
+        if self.baseline is not None:
             return self.compare_results(actual)
         else:
             self.clean()
