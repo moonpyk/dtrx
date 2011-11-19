@@ -128,7 +128,7 @@
   options: ""
   antigrep: "."
   baseline: |
-    lunzip <$1 >test-text
+    lzip -cd <$1 >test-text
   posttest: |
     exec [ "$(cat test-text)" = "hi" ]
 
