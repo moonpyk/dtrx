@@ -15,11 +15,11 @@ Extraction.&rdquo; It's a tool for Unix-like systems that takes all the
 hassle out of extracting archives.  Here's an example of how you use
 it:</p>
 
-<pre>$ dtrx linux-2.6.10.tar.bz2</pre>
+<pre>$ dtrx linux-3.0.1.tar.bz2</pre>
 
 <p>That's basically the same thing as:</p>
 
-<pre>$ tar -jxf linux-2.6.10.tar.bz2</pre>
+<pre>$ tar -jxf linux-3.0.1.tar.bz2</pre>
 
 <p>But there's more to it than that.  You know those really annoying files
 that don't put everything in a dedicated directory, and have the
@@ -60,6 +60,7 @@ one simple command to extract
 <span class="pname">gem</span>,
 <span class="pname">7z</span>,
 <span class="pname">cab</span>,
+<span class="pname">lzh</span>,
 <span class="pname">rar</span>,
 <span class="pname">gz</span>,
 <span class="pname">bz2</span>,
@@ -88,21 +89,16 @@ find archives inside the archive and extract those too.</li>
 
 <h2>Download</h2>
 
-<p><a href="dtrx-7.0.tar.gz">Download <span class="pname">dtrx</span>
-7.0</a>.  The SHA1 checksum for this file
-is <tt>7ebdd038ac25a8af3ab27d108b9427562f1e58fa</tt>.  Improvements in this
+<p><a href="dtrx-7.1.tar.gz">Download <span class="pname">dtrx</span>
+7.1</a>.  The SHA1 checksum for this file
+is <tt>05cfe705a04a8b84571b0a5647cd2648720791a4</tt>.  Improvements in this
 release include:</p>
 
 <ul>
 
-<li>Automatically download and extract URLs given as arguments.</li>
-<li>Extract <span class="pname">zip</span> files
-  with <span class="pname">7z</span> if <span class="pname">unzip</span>
-  does not succeed.</li>
-<li>Remove more common extensions from filenames when extracting to a new
-  directory or file.</li>
-<li>Don't offer to recurse through a archives if most of the included files
-  aren't archives.</li>
+<li>Support for LZH archives.</li>
+<li>Minor bug fixes in handling recursive extraction and empty
+  archives.</li>
 
 </ul>
 

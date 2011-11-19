@@ -7,10 +7,10 @@ cleanly extract many archive types
 ----------------------------------
 
 :Author: Brett Smith <brettcsmith@brettcsmith.org>
-:Date:   2010-09-05
+:Date:   2011-11-19
 :Copyright:
 
-  dtrx 7.0 is copyright © 2006-2011 Brett Smith and others.  Feel free to
+  dtrx 7.1 is copyright © 2006-2011 Brett Smith and others.  Feel free to
   send comments, bug reports, patches, and so on.  You can find the latest
   version of dtrx on its home page at
   <http://www.brettcsmith.org/2007/dtrx/>.
@@ -28,7 +28,7 @@ cleanly extract many archive types
   You should have received a copy of the GNU General Public License along
   with this program; if not, see <http://www.gnu.org/licenses/>.
 
-:Version: 7.0
+:Version: 7.1
 :Manual section: 1
 
 SYNOPSIS
