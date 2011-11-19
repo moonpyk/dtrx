@@ -701,7 +701,9 @@
 
 - name: extracting empty archive
   filenames: test-empty.tar.bz2
+  options: ""
   baseline: ""
+  antigrep: '.'
 
 - name: listing empty archive
   filenames: test-empty.tar.bz2

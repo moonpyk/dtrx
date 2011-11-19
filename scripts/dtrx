@@ -824,7 +824,7 @@ class RecursionPolicy(BasePolicy):
     def prep(self, current_filename, target, extractor):
         archive_count = len(extractor.included_archives)
         if ((self.permanent_policy is not None) or
-            ((archive_count * 10) < extractor.file_count)):
+            ((archive_count * 10) <= extractor.file_count)):
             self.current_policy = self.permanent_policy or RECURSE_NOT_NOW
             return
         question = self.wrap(
