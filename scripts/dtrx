@@ -373,6 +373,7 @@ class CompressionExtractor(BaseExtractor):
         except EXTRACTION_ERRORS:
             os.unlink(self.target)
             raise
+
             
 class TarExtractor(BaseExtractor):
     file_type = 'tar file'
