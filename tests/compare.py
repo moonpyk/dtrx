@@ -228,3 +228,5 @@ for outcome in OUTCOMES:
 for result in results:
     counts[result] += 1
 print " Totals:", ', '.join(["%s %s" % (counts[key], key) for key in OUTCOMES])
+if counts["error"] + counts["failed"] > 0:
+    sys.exit(1)
